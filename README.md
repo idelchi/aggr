@@ -166,6 +166,7 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
   - `--extensions`, `-x` – Only include listed file extensions (repeatable).
   - `--root`, `-C` – Set the root directory for matching and reading files.
   - `--strip-prefix`, `-p` – Strip the single, non-glob directory prefix from header paths (see "Header paths & stripping").
+  - `--binary`, `-b` – Include binary files.
   - `--dry-run`, `-d` – Show what would be packed without writing output.
 
 </details>
@@ -194,7 +195,7 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 * **No absolute paths, no `..`:** For safety, any absolute path or pattern containing a `..` segment is rejected. Use `-C` if you need to work elsewhere.
 * **Pattern normalization is opinionated:** `.` becomes `**`, and a plain directory becomes recursive. If you want exact matching behavior, use explicit globs.
 * **Markers only escape at line start:** Only lines that *start* with the marker (after spaces/tabs) get escaped. Text in the middle of a line is left as-is.
-* **Binary detection is conservative:** Files that look binary are skipped. If you need to force-include something unusual, consider adjusting ignores/patterns accordingly.
+* **Binary detection is conservative:** Files that look binary are skipped. If you need to force-include something unusual, use `--binary/-b` to disable the check.
 
 ## Demo
 

@@ -27,6 +27,8 @@ type Rules struct {
 	Max int
 	// Size defines the maximum size for a file to be included in the aggregation.
 	Size string
+	// Binary indicates whether to include binary files.
+	Binary bool
 }
 
 func (o Options) IsStdout() bool {

@@ -130,13 +130,16 @@ func (p Packer) Pack(searchPatterns []string) error {
 		}
 	}
 
-	checkers := []checkers.Checker{
+	checks := []checkers.Checker{
 		checkers.NewIgnore(ignorer),
 		checkers.NewSize(int(bytes)),
-		checkers.NewBinary(),
 	}
 
-	m := matcher.New(checkers, p.Options.Rules.Max, log)
+	if !p.Options.Rules.Binary {
+		checks = append(checks, checkers.NewBinary())
+	}
+
+	m := matcher.New(checks, p.Options.Rules.Max, log)
 
 	for _, path := range search {
 		log.Debugf("\n- Processing pattern: %v", path)
