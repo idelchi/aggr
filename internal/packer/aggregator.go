@@ -5,6 +5,7 @@
 package packer
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -72,12 +73,13 @@ func NewAggregator(l *logger.Logger, dry bool, parallel int) *Aggregator {
 	if parallel < 1 {
 		parallel = 1
 	}
+	m := "// === AGGR:"
 	return &Aggregator{
 		Prefixes: Prefixes{
-			Marker: "// === AGGR:",
+			Marker: m,
 			Begin:  "BEGIN:",
 			End:    "END:",
-			Escape: "// ==\\= AGGR:",
+			Escape: m[:len("// ===")] + "\\ " + m[len("// === "):], // insert "\" before space
 		},
 		Logger:   l,
 		Dry:      dry,
@@ -186,8 +188,72 @@ func (a *Aggregator) writeFooter(set files.Files, w io.Writer) error {
 	return err
 }
 
-// parseStream splits the packed stream from r into fileChunk values.
 func (a *Aggregator) parseStream(ctx context.Context, r file.File, ch chan<- fileChunk) error {
+	f, err := r.Open()
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	br := bufio.NewReader(f)
+	begin := a.Prefixes.beginPrefix()
+	end := a.Prefixes.endPrefix()
+
+	var (
+		curPath string
+		buf     bytes.Buffer
+		inFile  bool
+	)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		line, err := br.ReadString('\n') // returns line w/ '\n' or EOF
+		if err != nil && err != io.EOF && line == "" {
+			return err
+		}
+
+		switch {
+		case strings.HasPrefix(line, begin):
+			if inFile {
+				return fmt.Errorf("nested %q for %s", begin, curPath)
+			}
+			curPath = strings.TrimSpace(line[len(begin):])
+			buf.Reset()
+			inFile = true
+
+		case strings.HasPrefix(line, end):
+			p := strings.TrimSpace(line[len(end):])
+			if !inFile || p != curPath {
+				return fmt.Errorf("%q without matching %q for %s", end, begin, p)
+			}
+			dataCopy := append([]byte(nil), buf.Bytes()...)
+			ch <- fileChunk{path: curPath, data: dataCopy}
+			inFile = false
+
+		default:
+			if inFile {
+				buf.WriteString(line) // preserve newlines as before
+			}
+		}
+
+		if err == io.EOF {
+			break
+		}
+	}
+
+	if inFile {
+		return fmt.Errorf("unterminated file %q", curPath)
+	}
+	return nil
+}
+
+// parseStream splits the packed stream from r into fileChunk values.
+func (a *Aggregator) parseStream2(ctx context.Context, r file.File, ch chan<- fileChunk) error {
 	stream, err := r.Read()
 	if err != nil {
 		return err
@@ -278,14 +344,24 @@ func (p Prefixes) beginPrefix() string { return fmt.Sprintf("%s %s", p.Marker, p
 // endPrefix returns the full END marker used during parsing.
 func (p Prefixes) endPrefix() string { return fmt.Sprintf("%s %s", p.Marker, p.End) }
 
-// escape replaces occurrences of the marker inside data with the escape token.
 func (a *Aggregator) escape(data []byte) []byte {
-	return bytes.ReplaceAll(data, []byte(a.Prefixes.Marker), []byte(a.Prefixes.Escape))
+	lines := strings.Split(string(data), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimLeft(line, " \t"), a.Prefixes.Marker) {
+			lines[i] = strings.Replace(line, a.Prefixes.Marker, a.Prefixes.Escape, 1)
+		}
+	}
+	return []byte(strings.Join(lines, "\n"))
 }
 
-// unescape restores escaped markers inside data.
 func (a *Aggregator) unescape(data []byte) []byte {
-	return bytes.ReplaceAll(data, []byte(a.Prefixes.Escape), []byte(a.Prefixes.Marker))
+	lines := strings.Split(string(data), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimLeft(line, " \t"), a.Prefixes.Escape) {
+			lines[i] = strings.Replace(line, a.Prefixes.Escape, a.Prefixes.Marker, 1)
+		}
+	}
+	return []byte(strings.Join(lines, "\n"))
 }
 
 // canonical trims all trailing newlines and appends one '\n'.

@@ -46,7 +46,7 @@ func Pack() *cobra.Command {
 	cmd.Flags().
 		BoolVarP(&configuration.Rules.Hidden, "hidden", "a", false, "Include hidden files and directories")
 	cmd.Flags().
-		StringSliceVarP(&configuration.Extensions, "ext", "e", []string{}, "File extensions to include")
+		StringSliceVarP(&configuration.Extensions, "ext", "x", []string{}, "File extensions to include")
 
 	return cmd
 }

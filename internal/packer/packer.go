@@ -177,6 +177,13 @@ func (p Packer) Unpack(path string) error {
 		}
 	}
 
+	if len(p.Options.Extensions) > 0 {
+		extras := patterns.Patterns{"*"}
+		log.Debugf("- Adding file extension patterns: %v", extras)
+		extras = append(extras, ExtensionsToPatterns(p.Options.Extensions)...)
+		ignorePatterns = append(ignorePatterns, extras...)
+	}
+
 	checkers := []checkers.Checker{
 		checkers.NewIgnore(ignorePatterns.AsGitIgnore()),
 	}
