@@ -9,10 +9,12 @@ import (
 	"github.com/idelchi/godyl/pkg/path/file"
 )
 
+// Ignore is a checker that filters files based on gitignore-style patterns.
 type Ignore struct {
 	ignore *ignore.GitIgnore
 }
 
+// NewIgnore creates a new Ignore checker with the provided GitIgnore matcher.
 func NewIgnore(ignore *ignore.GitIgnore) *Ignore {
 	return &Ignore{ignore: ignore}
 }
@@ -30,7 +32,7 @@ func (i *Ignore) check(path string) error {
 	return nil // not a file to ignore, continue processing
 }
 
-// Check returns true if the given file is detected as a binary file, false otherwise.
+// Check returns an error if the file matches any of the configured ignore patterns.
 func (i *Ignore) Check(path string) error {
 	if err := i.check(path); err != nil {
 		return err

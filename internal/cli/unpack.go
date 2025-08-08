@@ -8,7 +8,9 @@ import (
 	"gitlab.garfield-labs.com/apps/aggr/internal/packer"
 )
 
-// Unpack creates the unpack command.
+// Unpack creates and returns the unpack command for extracting aggregated files.
+// The unpack command reads an aggregated file and recreates the original files
+// and directories in their original structure.
 func Unpack() *cobra.Command {
 	var configuration config.Options
 

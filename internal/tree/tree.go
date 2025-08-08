@@ -8,7 +8,9 @@ import (
 	"github.com/idelchi/godyl/pkg/path/files"
 )
 
-// GenerateTree creates a treeprint.Tree from a list of files.
+// Generate creates a visual tree structure from a list of file paths.
+// It returns a treeprint.Tree that can be rendered as ASCII art showing
+// the hierarchical organization of the provided files.
 func Generate(fileList files.Files) treeprint.Tree {
 	paths := fileList.AsSlice()
 	root := treeprint.New()

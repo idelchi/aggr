@@ -15,22 +15,25 @@ import (
 	"gitlab.garfield-labs.com/apps/aggr/internal/checkers"
 )
 
-// Walker filters doublestar results through a list of checkers.
+// Walker traverses file systems and applies filtering rules to discovered files.
+// It uses doublestar for glob pattern matching and applies checker rules to each file.
 type Walker struct {
-	// Checkers are the checkers that will be applied to each file.
+	// Checkers contains the validation rules applied to each discovered file.
 	Checkers checkers.Checkers
-	// Logger is the logger for debug messages.
+	// Logger receives debug messages during the walking process.
 	Logger Logger
-	// MaxWalk is the maximum number of files to walk.
+	// MaxWalk sets the maximum number of files to process before stopping.
 	MaxWalk int
 }
 
-// Logger is an interface for logging formatted messages.
+// Logger is an interface for logging formatted debug messages.
 type Logger interface {
+	// Debugf formats and logs a debug message.
 	Debugf(format string, v ...any)
 }
 
-// Walk returns every regular file that satisfies the checkers, up to the maximum number of files.
+// Walk traverses the file system using the given pattern and returns all regular files
+// that pass the configured checkers. It respects the maximum file limit and current count.
 func (w *Walker) Walk(fsys fs.FS, pattern string, current int, opts ...doublestar.GlobOption) (files.Files, error) {
 	var keep files.Files
 	err := doublestar.GlobWalk(

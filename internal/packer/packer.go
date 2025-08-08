@@ -19,13 +19,17 @@ import (
 	"gitlab.garfield-labs.com/apps/aggr/internal/patterns"
 )
 
-// Packer orchestrates the file packing process using various internal packages.
+// Packer orchestrates the file packing and unpacking processes.
 type Packer struct {
+	// Options contains the configuration settings for the packer.
 	Options config.Options
-	files   files.Files
+	// files holds the collection of files being processed.
+	files files.Files
 }
 
-// Pack executes the pack command.
+// Pack aggregates files matching the given search patterns into a single output.
+// It processes the patterns, applies filtering rules, and writes the aggregated
+// result to the configured output destination.
 func (p Packer) Pack(searchPatterns []string) error {
 	log, err := Logger(p.Options.DryRun)
 	if err != nil {
@@ -187,6 +191,8 @@ func (p Packer) Pack(searchPatterns []string) error {
 	return nil
 }
 
+// PromptForFolderExists prompts the user for confirmation if the target folder already exists.
+// It returns true if the user confirms to proceed, false otherwise.
 func PromptForFolderExists(folder folder.Folder) bool {
 	if !folder.Exists() {
 		return true
@@ -204,6 +210,9 @@ func PromptForFolderExists(folder folder.Folder) bool {
 	return false
 }
 
+// Unpack extracts files from an aggregated file and recreates the original directory structure.
+// It reads the packed file from the given path and writes the extracted files to the
+// configured output directory.
 func (p Packer) Unpack(path string) error {
 	log, err := Logger(p.Options.DryRun)
 	if err != nil {

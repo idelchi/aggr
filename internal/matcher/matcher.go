@@ -9,24 +9,27 @@ import (
 	"gitlab.garfield-labs.com/apps/aggr/internal/walker"
 )
 
-// Logger is an interface for logging formatted messages.
+// Logger is an interface for logging formatted debug messages.
 type Logger interface {
+	// Debugf formats and logs a debug message.
 	Debugf(format string, v ...any)
 }
 
-// Globber is a file matcher that compiles a list of files matching a given pattern, while
-// excluding files based on provided exclude patterns and options.
+// Globber collects files matching specified patterns while applying various filtering rules.
+// It maintains a collection of matched files and supports limiting the total number of files.
 type Globber struct {
-	// Checkers are additional checks that can be applied to files.
+	// Checkers contains the validation rules applied to each file.
 	Checkers checkers.Checkers
-	// Logger is a logger for debug messages (mainly).
+	// Logger receives debug messages during the matching process.
 	Logger Logger
-	// Files is the list of files that are added to the matcher, after matching and applying the options.
+	// Files holds the collection of files that passed all checks.
 	Files files.Files
-	// Max is the maximum number of files to collect.
+	// Max specifies the maximum number of files to collect.
 	Max int
 }
 
+// New creates a new Globber with the specified checkers, file limit, and logger.
+// It automatically adds a Seen checker to prevent duplicate file inclusion.
 func New(checks checkers.Checkers, max int, logger Logger) *Globber {
 	matcher := Globber{
 		Logger: logger,
@@ -43,6 +46,8 @@ func New(checks checkers.Checkers, max int, logger Logger) *Globber {
 	return &matcher
 }
 
+// Match processes files matching the given path pattern within the specified root directory.
+// It applies all configured checkers and adds matching files to the Files collection.
 func (m *Globber) Match(root, path string) (err error) {
 	walker := walker.Walker{
 		Checkers: m.Checkers,

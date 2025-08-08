@@ -12,12 +12,12 @@ var (
 	buildDate   string
 )
 
-// Execute runs the root command with version information.
+// Execute runs the root command with the specified version information.
 func Execute(version string) error {
 	return newRootCmd(version).Execute()
 }
 
-// newRootCmd creates the root command.
+// newRootCmd creates and configures the root command with subcommands.
 func newRootCmd(version string) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:     "aggr",

@@ -23,31 +23,33 @@ import (
 	"gitlab.garfield-labs.com/apps/aggr/internal/tree"
 )
 
-// Prefixes defines every token that appears in the packed stream.
+// Prefixes defines the markers and tokens used in the packed stream format.
 type Prefixes struct {
-	// Marker is the common prefix of BEGIN and END markers.
+	// Marker is the common prefix used for BEGIN and END markers.
 	Marker string
-	// Begin is the suffix that starts a file section.
+	// Begin is the suffix that indicates the start of a file section.
 	Begin string
-	// End is the suffix that ends a file section.
+	// End is the suffix that indicates the end of a file section.
 	End string
-	// Escape is the replacement for Marker inside file content.
+	// Escape is the replacement string for Marker when it appears inside file content.
 	Escape string
 }
 
-// Aggregator converts between files on disk and a packed stream.
+// Aggregator handles the conversion between individual files and packed streams.
+// It supports both packing multiple files into a single stream and unpacking
+// such streams back into individual files.
 type Aggregator struct {
-	// Prefixes are the markers used in the packed stream.
+	// Prefixes contains the markers used in the packed stream format.
 	Prefixes Prefixes
-	// Logger is the destination for debug information.
+	// Logger receives debug and informational messages during processing.
 	Logger *logger.Logger
-	// Dry controls whether to perform any file operations.
+	// Dry indicates whether to perform actual file operations or just simulate them.
 	Dry bool
-	// Parallel is the maximum number of worker goroutines.
+	// Parallel sets the maximum number of concurrent worker goroutines.
 	Parallel int
-	// Root is the root directory for packing.
+	// Root specifies the root directory for file operations during packing.
 	Root string
-	// StripPrefix defines the prefix to strip from file paths.
+	// StripPrefix defines the path prefix to remove from file paths in the archive.
 	StripPrefix string
 }
 
@@ -70,8 +72,9 @@ func (s *filesSink) add(f file.File) {
 	s.mu.Unlock()
 }
 
-// NewAggregator returns an Aggregator with default markers and concurrency.
-// Values ≤ 0 for parallel default to 1.
+// NewAggregator creates a new Aggregator with default configuration.
+// If parallel is ≤ 0, it defaults to 1 worker. The aggregator uses predefined
+// markers for the packed stream format.
 func NewAggregator(l *logger.Logger, dry bool, parallel int, root, stripPrefix string) *Aggregator {
 	if parallel < 1 {
 		parallel = 1
@@ -92,7 +95,8 @@ func NewAggregator(l *logger.Logger, dry bool, parallel int, root, stripPrefix s
 	}
 }
 
-// Pack writes a packed representation of set to a writer.
+// Pack writes a packed representation of the file set to the provided writer.
+// It processes all files concurrently and writes them in the packed format.
 func (a *Aggregator) Pack(set files.Files, w io.Writer) error {
 	if !a.Dry {
 		if err := a.packFiles(set, w); err != nil {
@@ -102,8 +106,9 @@ func (a *Aggregator) Pack(set files.Files, w io.Writer) error {
 	return a.writeFooter(set, w)
 }
 
-// Unpack reads a packed stream from r and recreates files under dst.
-// It returns the list of files that were (or would be) written.
+// Unpack reads a packed stream and recreates the original files under the destination directory.
+// It returns the list of files that were written (or would be written in dry run mode).
+// The checkers parameter allows filtering which files to extract.
 func (a *Aggregator) Unpack(r file.File, dst string, chk checkers.Checkers) (files.Files, error) {
 	var sink filesSink
 

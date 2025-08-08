@@ -8,7 +8,9 @@ import (
 	"gitlab.garfield-labs.com/apps/aggr/internal/packer"
 )
 
-// Pack creates the pack command.
+// Pack creates and returns the pack command for aggregating files.
+// The pack command collects files from specified patterns or paths and
+// aggregates them into a single output file.
 func Pack() *cobra.Command {
 	var configuration config.Options
 

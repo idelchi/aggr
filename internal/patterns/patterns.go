@@ -12,15 +12,15 @@ import (
 	"github.com/idelchi/godyl/pkg/path/file"
 )
 
-// Patterns contains path and gitignore patterns.
+// Patterns is a collection of path and gitignore-style patterns.
 type Patterns []string
 
-// AsGitIgnore compiles the patterns into a gitignore matcher.
+// AsGitIgnore compiles the patterns into a GitIgnore matcher for efficient pattern matching.
 func (p Patterns) AsGitIgnore() *ignore.GitIgnore {
 	return ignore.CompileIgnoreLines(p...)
 }
 
-// TrimEmpty removes empty patterns from the list.
+// TrimEmpty removes empty and whitespace-only patterns from the collection.
 func (p Patterns) TrimEmpty() Patterns {
 	var out Patterns
 	for _, pat := range p {
@@ -31,7 +31,7 @@ func (p Patterns) TrimEmpty() Patterns {
 	return out
 }
 
-// Normalized returns a new Patterns instance with all patterns normalized.
+// Normalized returns a new Patterns instance with all patterns normalized relative to the root directory.
 func (p Patterns) Normalized(root string) Patterns {
 	var out Patterns
 	for _, pat := range p {
@@ -41,10 +41,9 @@ func (p Patterns) Normalized(root string) Patterns {
 	return out
 }
 
-// Validate checks all patterns for validity.
-// Invalid patterns include:
-// - Relative path traversals (e.g. "../foo")
-// - Absolute paths (e.g. "/foo")
+// Validate checks all patterns in the collection for validity.
+// It rejects patterns containing relative path traversals (e.g., "../foo")
+// and absolute paths (e.g., "/foo").
 func (p Patterns) Validate() error {
 	for _, pat := range p {
 		if err := Validate(pat); err != nil {
@@ -55,9 +54,8 @@ func (p Patterns) Validate() error {
 }
 
 // Validate checks a single pattern for validity.
-// Invalid patterns include:
-// - Relative path traversals (e.g. "../foo")
-// - Absolute paths (e.g. "/foo")
+// It returns an error for patterns containing relative path traversals
+// (e.g., "../foo") or absolute paths (e.g., "/foo").
 func Validate(pat string) error {
 	// Normalize separators so SplitSeq works consistently
 	pat = filepath.ToSlash(pat)
@@ -76,13 +74,15 @@ func Validate(pat string) error {
 	return nil
 }
 
+// ContainsMeta returns true if the pattern contains glob meta characters.
 func ContainsMeta(pat string) bool {
 	// Check for any glob meta characters
 	return strings.ContainsAny(pat, "*?[{")
 }
 
-// Normalize turns "." → "**" and any dir path → "dir/**".
-// It never touches patterns that already contain meta (*?[{) or /../.
+// Normalize converts simple directory paths to appropriate glob patterns.
+// It transforms "." to "**" and directory paths to "dir/**". Patterns
+// already containing meta characters or path traversals are left unchanged.
 func Normalize(pat, root string) string {
 	pat = filepath.ToSlash(pat)
 
