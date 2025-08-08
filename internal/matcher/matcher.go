@@ -1,7 +1,6 @@
 package matcher
 
 import (
-	"io/fs"
 	"os"
 
 	"github.com/idelchi/godyl/pkg/path/files"
@@ -44,17 +43,14 @@ func New(checks checkers.Checkers, max int, logger Logger) *Globber {
 	return &matcher
 }
 
-func (m *Globber) Match(path string) (err error) {
-	fs := func(base string) fs.FS { return os.DirFS(base) }
-
+func (m *Globber) Match(root, path string) (err error) {
 	walker := walker.Walker{
-		FS:       fs,
 		Checkers: m.Checkers,
 		Logger:   m.Logger,
 		MaxWalk:  m.Max,
 	}
 
-	collected, err := walker.Walk(path, len(m.Files))
+	collected, err := walker.Walk(os.DirFS(root), path, len(m.Files))
 	if err != nil {
 		return err
 	}

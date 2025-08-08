@@ -38,15 +38,18 @@ func Pack() *cobra.Command {
 	cmd.Flags().
 		StringSliceVarP(&configuration.Rules.Patterns, "ignore", "i", []string{}, "Additional .aggignore patterns.")
 	cmd.Flags().
-		StringVar(&configuration.Rules.Size, "size", config.DefaultMaxSize, "Maximum size of file to include")
+		StringVarP(&configuration.Rules.Size, "size", "s", config.DefaultMaxSize, "Maximum size of file to include")
 	cmd.Flags().
-		IntVar(&configuration.Rules.Max, "max", config.DefaultMaxFiles, "Maximum number of files to include")
+		IntVarP(&configuration.Rules.Max, "max", "m", config.DefaultMaxFiles, "Maximum number of files to include")
 	cmd.Flags().
-		BoolVar(&configuration.DryRun, "dry", false, "Show which files would be processed without reading contents")
+		BoolVarP(&configuration.DryRun, "dry-run", "d", false, "Show which files would be processed without reading contents")
 	cmd.Flags().
 		BoolVarP(&configuration.Rules.Hidden, "hidden", "a", false, "Include hidden files and directories")
 	cmd.Flags().
-		StringSliceVarP(&configuration.Extensions, "ext", "x", []string{}, "File extensions to include")
-
+		StringSliceVarP(&configuration.Rules.Extensions, "extensions", "x", []string{}, "File extensions to include")
+	cmd.Flags().
+		StringVarP(&configuration.Rules.Root, "root", "C", ".", "Root directory to use")
+	cmd.Flags().
+		BoolVarP(&configuration.Rules.StripPrefix, "strip-prefix", "p", false, "Strip the prefix from file paths")
 	return cmd
 }

@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"sync"
 
@@ -46,6 +45,10 @@ type Aggregator struct {
 	Dry bool
 	// Parallel is the maximum number of worker goroutines.
 	Parallel int
+	// Root is the root directory for packing.
+	Root string
+	// StripPrefix defines the prefix to strip from file paths.
+	StripPrefix string
 }
 
 // fileChunk carries one file’s data from the parser to a worker.
@@ -69,7 +72,7 @@ func (s *filesSink) add(f file.File) {
 
 // NewAggregator returns an Aggregator with default markers and concurrency.
 // Values ≤ 0 for parallel default to 1.
-func NewAggregator(l *logger.Logger, dry bool, parallel int) *Aggregator {
+func NewAggregator(l *logger.Logger, dry bool, parallel int, root, stripPrefix string) *Aggregator {
 	if parallel < 1 {
 		parallel = 1
 	}
@@ -81,9 +84,11 @@ func NewAggregator(l *logger.Logger, dry bool, parallel int) *Aggregator {
 			End:    "END:",
 			Escape: m[:len("// ===")] + "\\ " + m[len("// === "):], // insert "\" before space
 		},
-		Logger:   l,
-		Dry:      dry,
-		Parallel: parallel,
+		Logger:      l,
+		Dry:         dry,
+		Parallel:    parallel,
+		Root:        root,
+		StripPrefix: stripPrefix,
 	}
 }
 
@@ -164,12 +169,19 @@ func (a *Aggregator) packFiles(set files.Files, w io.Writer) error {
 
 // packFile returns the packed representation of a single file.
 func (a *Aggregator) packFile(f file.File) ([]byte, error) {
-	data, err := os.ReadFile(f.Path())
+	realPath := file.New(a.Root, f.Path())
+
+	data, err := realPath.Read()
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", f.Path(), err)
+		return nil, fmt.Errorf("read %s: %w", realPath, err)
 	}
 
 	var buf bytes.Buffer
+
+	if a.StripPrefix != "" {
+		f = f.WithoutFolder(a.StripPrefix)
+	}
+
 	fmt.Fprintf(&buf, "%s %s\n", a.Prefixes.beginPrefix(), f.Path())
 	buf.Write(a.escape(canonical(data)))
 	fmt.Fprintf(&buf, "%s %s\n\n", a.Prefixes.endPrefix(), f.Path())
@@ -243,64 +255,6 @@ func (a *Aggregator) parseStream(ctx context.Context, r file.File, ch chan<- fil
 
 		if err == io.EOF {
 			break
-		}
-	}
-
-	if inFile {
-		return fmt.Errorf("unterminated file %q", curPath)
-	}
-	return nil
-}
-
-// parseStream splits the packed stream from r into fileChunk values.
-func (a *Aggregator) parseStream2(ctx context.Context, r file.File, ch chan<- fileChunk) error {
-	stream, err := r.Read()
-	if err != nil {
-		return err
-	}
-
-	begin := a.Prefixes.beginPrefix()
-	end := a.Prefixes.endPrefix()
-
-	var (
-		curPath string
-		buf     bytes.Buffer
-		inFile  bool
-	)
-
-	for l := range bytes.SplitSeq(stream, []byte{'\n'}) {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		line := string(l)
-
-		switch {
-		case strings.HasPrefix(line, begin):
-			if inFile {
-				return fmt.Errorf("nested %q for %s", begin, curPath)
-			}
-			curPath = strings.TrimSpace(line[len(begin):])
-			buf.Reset()
-			inFile = true
-
-		case strings.HasPrefix(line, end):
-			p := strings.TrimSpace(line[len(end):])
-			if !inFile || p != curPath {
-				return fmt.Errorf("%q without matching %q for %s", end, begin, p)
-			}
-			// Copy the buffer so further writes don't mutate the chunk.
-			dataCopy := append([]byte(nil), buf.Bytes()...)
-			ch <- fileChunk{path: curPath, data: dataCopy}
-			inFile = false
-
-		default:
-			if inFile {
-				buf.Write(l)
-				buf.WriteByte('\n')
-			}
 		}
 	}
 

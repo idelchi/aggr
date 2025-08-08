@@ -8,21 +8,25 @@ type Options struct {
 	DryRun bool
 	// Parallel defines the number of parallel workers to use.
 	Parallel int
-	// Extensions defines the file extensions to include in the aggregation.
-	Extensions []string
 	// Rules defines the rules for file aggregation.
 	Rules Rules
 }
 
 type Rules struct {
+	// Root defines the root directory for the aggregation.
+	Root string
 	// Patterns to consider when collecting files.
 	Patterns []string
+	// Extensions defines the file extensions to include in the aggregation.
+	Extensions []string
+	// Hidden indicates whether to consider hidden files.
+	Hidden bool
+	// StripPrefix defines whether to strip the prefix from file paths.
+	StripPrefix bool
 	// Max defines the maximum number of files to collect.
 	Max int
 	// Size defines the maximum size for a file to be included in the aggregation.
 	Size string
-	// Hidden indicates whether to consider hidden files.
-	Hidden bool
 }
 
 func (o Options) IsStdout() bool {

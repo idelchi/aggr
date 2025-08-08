@@ -16,7 +16,14 @@ func NewBinary() *Binary {
 
 // Check returns an error if the given file is binary, nil otherwise.
 func (b *Binary) Check(path string) error {
-	if !file.New("", path).IsFile() {
+	binary := file.New(path).IsBinaryLike()
+	if binary {
+		return fmt.Errorf("%w: detected as binary", ErrSkip)
+	}
+
+	return nil
+
+	if !file.New(path).IsFile() {
 		return nil // Directories are not considered
 	}
 

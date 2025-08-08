@@ -31,7 +31,7 @@ func GetOutputWriter(options config.Options) (*os.File, error) {
 		return os.Stdout, nil
 	}
 
-	file := file.New("", options.Output)
+	file := file.New(options.Output)
 
 	if err := file.Create(); err != nil {
 		return nil, fmt.Errorf("creating output file %s: %w", options.Output, err)

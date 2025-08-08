@@ -11,6 +11,7 @@ import (
 	"github.com/idelchi/godyl/pkg/path/file"
 	"github.com/idelchi/godyl/pkg/path/files"
 	"github.com/idelchi/godyl/pkg/path/folder"
+	"github.com/idelchi/godyl/pkg/pretty"
 
 	"gitlab.garfield-labs.com/apps/aggr/internal/checkers"
 	"gitlab.garfield-labs.com/apps/aggr/internal/config"
@@ -25,11 +26,42 @@ type Packer struct {
 }
 
 // Pack executes the pack command.
-func (p Packer) Pack(paths []string) error {
+func (p Packer) Pack(searchPatterns []string) error {
 	log, err := Logger(p.Options.DryRun)
 	if err != nil {
 		return err
 	}
+
+	stripPrefix := ""
+
+	if p.Options.Rules.StripPrefix {
+		switch {
+		case len(searchPatterns) > 1:
+			return fmt.Errorf("cannot use --strip-prefix with multiple patterns")
+		case patterns.ContainsMeta(searchPatterns[0]):
+			return fmt.Errorf("cannot use --strip-prefix with patterns containing wildcards")
+		default:
+			stripPrefix = searchPatterns[0]
+		}
+	}
+
+	log.Debug("Packing files with options:")
+	if p.Options.DryRun {
+		pretty.PrintYAML(p.Options)
+		fmt.Printf("args: %v\n", searchPatterns)
+	}
+	search := patterns.Patterns(searchPatterns)
+
+	if err := search.Validate(); err != nil {
+		return fmt.Errorf(
+			"validating search patterns: %w:\nuse --root/-C <path> to specify a different root directory",
+			err,
+		)
+	}
+
+	search = search.Normalized(p.Options.Rules.Root)
+
+	log.Debugf("- Normalized search patterns: %v", search)
 
 	bytes, err := humanize.ParseBytes(p.Options.Rules.Size)
 	if err != nil {
@@ -38,54 +70,61 @@ func (p Packer) Pack(paths []string) error {
 
 	ignorePatterns := patterns.Patterns{}
 
-	if !p.Options.Rules.Hidden {
-		log.Debug("- Adding default ignore patterns for hidden files and directories")
-		// Exclude hidden folders & files if hidden is false
-		ignorePatterns = append(ignorePatterns, config.DefaultHidden...)
+	log.Debug("- Checking for .aggignore file")
+
+	aggrignore, ok := ActiveAggrignore()
+	if ok {
+		log.Debugf("  - Found .aggignore file: %q", aggrignore)
+		lines, err := aggrignore.Lines()
+		if err != nil {
+			return fmt.Errorf("reading %q: %w", aggrignore, err)
+		}
+
+		ignorePatterns = append(ignorePatterns, patterns.Patterns(lines).TrimEmpty()...)
+	} else {
+		log.Debug("  - No active .aggignore file found")
 	}
 
-	if exe, err := os.Executable(); err == nil {
-		path := file.New("", exe).Path()
-		log.Debugf("- Excluding executable itself: %q", path)
+	log.Debug("- Adding ignore patterns:")
+	log.Debugf("  - .aggignore: %v", ignorePatterns)
+	log.Debugf("  - default: %v", config.DefaultExcludes)
+	ignorePatterns = append(ignorePatterns, config.DefaultExcludes...)
 
-		// Exclude the executable itself
+	// Exclude the executable itself
+	if exe, err := os.Executable(); err == nil {
+		path := file.New(exe).Path()
+		log.Debugf("  - the executable: %q", path)
+
 		ignorePatterns = append(ignorePatterns, path)
 	}
 
-	log.Debug("- Adding default ignore patterns for executables and known directories")
-
-	ignorePatterns = append(ignorePatterns, config.DefaultExcludes...)
-
 	// Add output file to excludes if specified
 	if !p.Options.IsStdout() {
-		log.Debugf("- Excluding output file from aggregation: %q", p.Options.Output)
+		log.Debugf("  - the output file: %q", p.Options.Output)
 		ignorePatterns = append(ignorePatterns, p.Options.Output)
 	}
 
+	if len(p.Options.Rules.Extensions) > 0 {
+		extras := patterns.Patterns{"*"}
+		extras = append(extras, ExtensionsToPatterns(p.Options.Rules.Extensions)...)
+		log.Debugf("  - file extension patterns passed on commandline: %v", extras)
+		ignorePatterns = append(ignorePatterns, extras...)
+	}
+
+	log.Debugf("  - patterns passed on commandline: %v", p.Options.Rules.Patterns)
 	ignorePatterns = append(ignorePatterns, p.Options.Rules.Patterns...)
 
-	if len(p.Options.Extensions) > 0 {
-		extras := patterns.Patterns{"*"}
-		log.Debugf("- Adding file extension patterns: %v", extras)
-		extras = append(extras, ExtensionsToPatterns(p.Options.Extensions)...)
-		ignorePatterns = append(ignorePatterns, extras...)
+	// Exclude hidden folders & files if hidden is false
+	if !p.Options.Rules.Hidden {
+		log.Debugf("  - hidden files and folders: %v", config.DefaultHidden)
+
+		ignorePatterns = append(ignorePatterns, config.DefaultHidden...)
 	}
 
 	ignorer := ignorePatterns.AsGitIgnore()
 
-	aggrignore, ok := ActiveAggrignore()
-	if ok {
-		log.Debugf("- Active .aggignore file: %q", aggrignore)
-		ignorer, err = patterns.LoadIgnoreFile(aggrignore, ignorePatterns)
-		if err != nil {
-			return fmt.Errorf("failed to load ignore patterns: %w", err)
-		}
-	} else {
-		log.Debug("- No active .aggignore file found")
-	}
-
 	if len(ignorePatterns) > 0 {
-		log.Debug("- Using ignore patterns:")
+		log.Debug("- The following patterns will be applied:")
 		for _, pattern := range ignorePatterns {
 			log.Debugf("  - %s", pattern)
 		}
@@ -99,9 +138,9 @@ func (p Packer) Pack(paths []string) error {
 
 	m := matcher.New(checkers, p.Options.Rules.Max, log)
 
-	for _, path := range paths {
+	for _, path := range search {
 		log.Debugf("\n- Processing pattern: %v", path)
-		if err := m.Match(patterns.Normalize(path)); err != nil {
+		if err := m.Match(p.Options.Rules.Root, path); err != nil {
 			return fmt.Errorf("matching pattern %q: %w", path, err)
 		}
 	}
@@ -114,6 +153,14 @@ func (p Packer) Pack(paths []string) error {
 		p.Options.Output = "" // In dry run mode, we don't write anything
 	}
 
+	aggregator := NewAggregator(
+		log,
+		p.Options.DryRun,
+		p.Options.Parallel,
+		p.Options.Rules.Root,
+		stripPrefix,
+	)
+
 	// Get output writer
 	writer, err := GetOutputWriter(p.Options)
 	if err != nil {
@@ -124,8 +171,6 @@ func (p Packer) Pack(paths []string) error {
 			writer.Close()
 		}
 	}()
-
-	aggregator := NewAggregator(log, p.Options.DryRun, p.Options.Parallel)
 
 	if err := aggregator.Pack(m.Files, writer); err != nil {
 		return fmt.Errorf("failed to aggregate files: %w", err)
@@ -163,10 +208,10 @@ func (p Packer) Unpack(path string) error {
 	}
 
 	// Read the packed file
-	archive := file.New("", path)
+	archive := file.New(path)
 
 	// Create unpacker instance
-	unpacker := NewAggregator(log, p.Options.DryRun, p.Options.Parallel)
+	unpacker := NewAggregator(log, p.Options.DryRun, p.Options.Parallel, p.Options.Rules.Root, "")
 
 	ignorePatterns := patterns.Patterns(p.Options.Rules.Patterns)
 
@@ -177,10 +222,10 @@ func (p Packer) Unpack(path string) error {
 		}
 	}
 
-	if len(p.Options.Extensions) > 0 {
+	if len(p.Options.Rules.Extensions) > 0 {
 		extras := patterns.Patterns{"*"}
 		log.Debugf("- Adding file extension patterns: %v", extras)
-		extras = append(extras, ExtensionsToPatterns(p.Options.Extensions)...)
+		extras = append(extras, ExtensionsToPatterns(p.Options.Rules.Extensions)...)
 		ignorePatterns = append(ignorePatterns, extras...)
 	}
 
@@ -188,7 +233,7 @@ func (p Packer) Unpack(path string) error {
 		checkers.NewIgnore(ignorePatterns.AsGitIgnore()),
 	}
 
-	output := folder.New("", p.Options.Output)
+	output := folder.New(p.Options.Output)
 
 	if p.Options.Output == "" {
 		hash, err := archive.Hash()
@@ -196,7 +241,7 @@ func (p Packer) Unpack(path string) error {
 			return fmt.Errorf("calculating archive hash: %w", err)
 		}
 
-		output = folder.New("", fmt.Sprintf("aggr-%s", hash))
+		output = folder.New(fmt.Sprintf("aggr-%s", hash))
 	}
 
 	// if output exists as a directory, prompt the user

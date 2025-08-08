@@ -9,7 +9,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gabriel-vasile/mimetype v1.4.9
-	github.com/idelchi/godyl v0.0.20-beta.0.20250808054903-a47c3ed6c44c
+	github.com/idelchi/godyl v0.0.20-beta.0.20250808111136-b3585373e97b
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/spf13/cobra v1.9.1
 	github.com/xlab/treeprint v1.2.0

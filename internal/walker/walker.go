@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"path/filepath"
+	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 
@@ -15,13 +15,8 @@ import (
 	"gitlab.garfield-labs.com/apps/aggr/internal/checkers"
 )
 
-// FSFactory turns the “base” directory (the part before the first glob meta character) into an fs.FS.
-type FSFactory func(base string) fs.FS
-
 // Walker filters doublestar results through a list of checkers.
 type Walker struct {
-	// FS is a factory that creates an fs.FS for the given base path.
-	FS FSFactory
 	// Checkers are the checkers that will be applied to each file.
 	Checkers checkers.Checkers
 	// Logger is the logger for debug messages.
@@ -36,23 +31,22 @@ type Logger interface {
 }
 
 // Walk returns every regular file that satisfies the checkers, up to the maximum number of files.
-func (w *Walker) Walk(pattern string, current int, opts ...doublestar.GlobOption) (files.Files, error) {
-	base, glob := doublestar.SplitPattern(filepath.ToSlash(pattern))
-
-	fsys := w.FS(base)
-
+func (w *Walker) Walk(fsys fs.FS, pattern string, current int, opts ...doublestar.GlobOption) (files.Files, error) {
 	var keep files.Files
 	err := doublestar.GlobWalk(
-		fsys, glob,
+		fsys, pattern,
 		func(p string, d fs.DirEntry) error {
 			if p == "." {
 				return nil
 			}
 
-			fullPath := file.New(base, p)
+			fullPath := file.New(p)
 
 			if err := w.Checkers.Check(fullPath.Path()); err != nil {
-				w.Logger.Debugf("  - %q: %v", fullPath, err)
+
+				if !strings.Contains(fullPath.Path(), ".git") {
+					w.Logger.Debugf("  - %q: %v", fullPath, err)
+				}
 
 				if errors.Is(err, checkers.ErrAbort) {
 					return fs.SkipAll

@@ -19,11 +19,11 @@
 
 ## Features
 
-* Pack multiple files and directories into a single, human-readable archive.
+* Pack multiple files and directories into a single text archive.
 * Unpack archives, restoring the original directory structure.
-* Filter files by size, name, and path using glob and `.gitignore`-style patterns.
-* Support for `.aggrignore` files for project-specific ignore rules.
-* Automatically excludes binary files, hidden files, and common VCS/build directories by default.
+* Filter files by size, extension, and path using glob + `.gitignore`-style patterns.
+* Supports a project `.aggrignore` (and a user-level one in your OS config dir).
+* Skips binary files automatically and, by default, hidden files and common VCS/build dirs.
 
 ## Installation
 
@@ -44,23 +44,18 @@ aggr pack src/ docs/
 ```
 
 ```sh
-# Pack to a file
-aggr pack -o archive.agg
+# Pack using glob patterns
+aggr pack '**/folder/**/*.go'
 ```
 
 ```sh
-# Unpack an archive
-aggr unpack archive.agg
-```
-
-```sh
-# Unpack to a specific directory
+# Unpack an archive to a specific directory
 aggr unpack -o extracted/ archive.agg
 ```
 
 ## Format
 
-Archives are plain text files with simple markers to delimit file content. This makes them easy to read and manipulate with standard text-based tools.
+Archives are plain text files with simple markers to delimit file content.
 
 ```
 // === AGGR: BEGIN: src/main.go ===
@@ -81,25 +76,75 @@ Description here.
 // === AGGR: END: README.md ===
 ```
 
+### Marker escaping
+
+If a *line* in your file content starts with the marker prefix (after optional spaces/tabs), it gets escaped on pack and unescaped on unpack. Lines that contain the marker elsewhere are left alone. This keeps the archive parseable without mutating normal content.
+
+## Path semantics (important)
+
+* **Root directory**: By default the root is the current working directory. Use `--root DIR` or `-C DIR` to change it.
+* **Patterns**: Input patterns must be **relative** to the root and **cannot** contain absolute paths or any `..` segment. If you want to work outside CWD, use `-C`.
+* **Normalization**:
+  * `.` becomes `**` (current dir + all subdirs).
+  * A directory path with no glob meta (e.g. `foo/`) is treated as recursive: `foo/**`.
+  * If your pattern already has meta (`*?[{`), it's passed through.
+* **Glob engine**: Uses [doublestar](https://github.com/bmatcuk/doublestar). Examples:
+  * `**/*.go`
+  * `pkg/**/testdata/**`
+  * `**/Dockerfile`
+
+## Header paths & stripping
+
+* **Default header paths**: root-relative.
+  ```
+  // === AGGR: BEGIN: devenv/dev/compose.yaml ===
+  // === AGGR: BEGIN: devenv/master/compose.yaml ===
+  ```
+* **Strip prefix**: if you want headers to be *under* a single directory (e.g. just `compose.yaml`), use:
+  ```
+  aggr pack -C .. -p devenv/dev
+  ```
+  Constraints for `--strip-prefix/-p`:
+  * Must have **exactly one** input argument/pattern.
+  * That argument **cannot contain glob meta**.
+  * The prefix is interpreted relative to `--root/-C`.
+
+If you don't pass `-p`, paths remain root-relative even if you target a single directory.
+
 ## Filtering
 
-To exclude files, create an `.aggrignore` file in your project directory with `.gitignore`-style patterns:
+Create an `.aggrignore` with `.gitignore`-style patterns:
 
 ```
-# Ignore log files and build artifacts
+# Ignore logs and build artifacts
 *.log
 build/
 dist/
-.git/
 ```
 
-You can also provide ignore patterns directly on the command line:
+You can also provide additional ignore patterns via CLI:
 
 ```sh
 aggr pack -i "*.tmp" -i "node_modules/"
 ```
 
-By default, `aggr` excludes binary files, hidden folders and files (like `.env`, `.vscode`), and common directories (`.git/`, `vendor/`, etc.). Use the `--hidden` and `--no-defaults` flags to override this behavior.
+**Defaults** (always applied unless you override with your own patterns):
+* Common VCS/build dirs: `.git/`, `vendor/`, `node_modules/`, etc.
+* Hidden files/dirs (those starting with `.`) are excluded **by default**. Use `-a/--hidden` to include them.
+* The output file itself (when `-o` is used).
+* The `aggr` executable.
+* **Binary files** are skipped automatically.
+
+### Extensions include list
+
+You can use `-x/--extensions` to "invert" selection by extension, e.g.:
+
+```sh
+# Only include .go and .md (plus anything force-included by your own patterns)
+aggr pack -x go -x md
+```
+
+This is implemented as an "allow-list" layer using ignore patterns under the hood.
 
 ## Commands and Flags
 
@@ -113,13 +158,15 @@ By default, `aggr` excludes binary files, hidden folders and files (like `.env`,
   - `p`
 
 - **Flags:**
-  - `--output`, `-o` – Specify output file (default: stdout).
-  - `--ignore`, `-i` – Add an ignore pattern (can be used multiple times).
-  - `--size` – Maximum size of a file to include (e.g., "500kb", "1mb"). Default: "1mb".
-  - `--max` – Maximum number of files to include. Default: 1000.
-  - `--hidden`, `-a` – Include hidden files and directories (those starting with '.').
-  - `--no-defaults` – Disable the default ignore patterns.
-  - `--dry` – Show which files would be processed without creating the archive.
+  - `--output`, `-o` – Output file (default: stdout).
+  - `--ignore`, `-i` – Additional ignore pattern (repeatable).
+  - `--size`, `-s` – Max file size to include (e.g., `500kb`, `1mb`). Default: `1mb`.
+  - `--max`, `-m` – Max number of files to include. Default: `1000`.
+  - `--hidden`, `-a` – Include hidden files and directories.
+  - `--extensions`, `-x` – Only include listed file extensions (repeatable).
+  - `--root`, `-C` – Set the root directory for matching and reading files.
+  - `--strip-prefix`, `-p` – Strip the single, non-glob directory prefix from header paths (see "Header paths & stripping").
+  - `--dry-run`, `-d` – Show what would be packed without writing output.
 
 </details>
 
@@ -133,22 +180,21 @@ By default, `aggr` excludes binary files, hidden folders and files (like `.env`,
   - `u`, `x`
 
 - **Flags:**
-  - `--output`, `-o` – Specify the output directory (default: current directory).
-  - `--ignore`, `-i` – Add a pattern to ignore files during extraction (can be used multiple times).
-  - `--dry` – Show which files would be unpacked without writing them to disk.
+  - `--output`, `-o` – Output directory. Default: `aggr-<hash-of-archive>` in the current directory.
+  - `--ignore`, `-i` – Ignore patterns applied *during extraction*.
+  - `--ext`, `-x` – Only extract files with these extensions (repeatable).
+  - `--dry` – Show what would be unpacked without writing files.
+
+- **Note:** If the output directory already exists, you'll be prompted to confirm before potentially overwriting files.
 
 </details>
 
-<details>
-<summary><strong>version</strong> — Display version information</summary>
+## Peculiarities & gotchas (read this)
 
-- **Usage:**
-  - `aggr version`
-
-- **Description:**
-  - Prints the application version, commit hash, and build date.
-
-</details>
+* **No absolute paths, no `..`:** For safety, any absolute path or pattern containing a `..` segment is rejected. Use `-C` if you need to work elsewhere.
+* **Pattern normalization is opinionated:** `.` becomes `**`, and a plain directory becomes recursive. If you want exact matching behavior, use explicit globs.
+* **Markers only escape at line start:** Only lines that *start* with the marker (after spaces/tabs) get escaped. Text in the middle of a line is left as-is.
+* **Binary detection is conservative:** Files that look binary are skipped. If you need to force-include something unusual, consider adjusting ignores/patterns accordingly.
 
 ## Demo
 

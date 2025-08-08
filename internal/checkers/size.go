@@ -19,11 +19,11 @@ func NewSize(size int) *Size {
 
 // Check returns true if the given file is larger than the specified size, false otherwise.
 func (s *Size) Check(path string) error {
-	if !file.New("", path).IsFile() {
+	if !file.New(path).IsFile() {
 		return nil // Directories are not considered
 	}
 
-	file := file.New("", path)
+	file := file.New(path)
 	if !file.IsFile() {
 		return nil
 	}

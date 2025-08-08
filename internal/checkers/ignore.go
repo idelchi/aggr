@@ -37,7 +37,7 @@ func (i *Ignore) Check(path string) error {
 	}
 
 	// // TODO(Idelchi): Do we really need this?
-	if file.New("", path).IsDir() {
+	if file.New(path).IsDir() {
 		path = strings.TrimRight(path, "/") + "/"
 	}
 

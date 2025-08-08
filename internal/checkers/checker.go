@@ -2,16 +2,10 @@ package checkers
 
 import (
 	"errors"
-	"slices"
 )
 
 type Checker interface {
 	Check(path string) error
-}
-
-// Contains returns true if the given file is already present in the list of matched files, false otherwise.
-func Contains(file string, files []string) bool {
-	return slices.Contains(files, file)
 }
 
 type Checkers []Checker
