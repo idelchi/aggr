@@ -1,0 +1,9 @@
+version: "3"
+
+tasks:
+  tag:
+    - |
+      git cf
+      git tag -d v0.0.0 || true
+      git tag v0.0.0
+      git push origin -f v0.0.0

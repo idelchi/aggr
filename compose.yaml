@@ -1,0 +1,17 @@
+include:
+  - ${DOTAI}/compose.yaml
+
+services:
+  build:
+    build:
+      args:
+        - AGGR_VERSION=local
+      target: build
+    image: idelchi/aggr:build
+    container_name: aggr
+    hostname: aggr
+    # volumes:
+    #   - .:/home/user/ws
+    extra_hosts:
+      - host:host-gateway
+    working_dir: /home/user/.aggr
