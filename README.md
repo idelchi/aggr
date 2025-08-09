@@ -4,10 +4,10 @@ A tool to aggregate and unpack files from directories</p>
 
 ---
 
-[![GitHub release](https://img.shields.io/github/v/release/idelchi/agg)](https://github.com/idelchi/agg/releases)
-[![Go Reference](https://pkg.go.dev/badge/github.com/idelchi/agg.svg)](https://pkg.go.dev/github.com/idelchi/agg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/idelchi/agg)](https://goreportcard.com/report/github.com/idelchi/agg)
-[![Build Status](https://github.com/idelchi/agg/actions/workflows/github-actions.yml/badge.svg)](https://github.com/idelchi/agg/actions/workflows/github-actions.yml/badge.svg)
+[![GitHub release](https://img.shields.io/github/v/release/idelchi/aggr)](https://github.com/idelchi/aggr/releases)
+[![Go Reference](https://pkg.go.dev/badge/github.com/idelchi/aggr.svg)](https://pkg.go.dev/github.com/idelchi/aggr)
+[![Go Report Card](https://goreportcard.com/badge/github.com/idelchi/aggr)](https://goreportcard.com/report/github.com/idelchi/aggr)
+[![Build Status](https://github.com/idelchi/aggr/actions/workflows/github-actions.yml/badge.svg)](https://github.com/idelchi/aggr/actions/workflows/github-actions.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 `aggr` is a command-line utility that recursively aggregates files from specified paths into a single file and unpacks them back to their original directory structure.
