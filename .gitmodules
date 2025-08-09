@@ -1,4 +1,0 @@
-[submodule ".devenv"]
-	path = .devenv
-	url = https://github.com/idelchi/devenv.git
-	branch = dev
