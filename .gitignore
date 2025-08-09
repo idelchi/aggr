@@ -1,3 +1,16 @@
+# Binaries for programs and plugins
+*.exe
+*.lnk
+*.bat
+
+# Ignored files
+.bash_history
+.gitconfig
+.env
 *.agg
-test.yaml
-OVERVIEW.md
+
+
+# Ignored folders
+.build
+.cache
+.task
