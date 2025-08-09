@@ -46,9 +46,9 @@ func Unpack() *cobra.Command {
 	cmd.Flags().
 		StringSliceVarP(&configuration.Rules.Patterns, "ignore", "i", []string{}, "Additional .aggignore patterns.")
 	cmd.Flags().
-		BoolVar(&configuration.DryRun, "dry", false, "Show which files would be processed without reading contents")
+		BoolVar(&configuration.DryRun, "dry-run", false, "Show which files would be processed without reading contents")
 	cmd.Flags().
-		StringSliceVarP(&configuration.Rules.Extensions, "ext", "x", []string{}, "File extensions to include")
+		StringSliceVarP(&configuration.Rules.Extensions, "extensions", "x", []string{}, "File extensions to include")
 
 	return cmd
 }

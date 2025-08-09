@@ -22,8 +22,6 @@ type Rules struct {
 	Extensions []string
 	// Hidden indicates whether to include hidden files and directories.
 	Hidden bool
-	// StripPrefix defines whether to strip the prefix from file paths.
-	StripPrefix bool
 	// Max defines the maximum number of files to collect.
 	Max int
 	// Size defines the maximum file size to include in aggregation.

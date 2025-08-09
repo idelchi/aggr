@@ -15,8 +15,8 @@ import (
 
 	"gitlab.garfield-labs.com/apps/aggr/internal/checkers"
 	"gitlab.garfield-labs.com/apps/aggr/internal/config"
-	"gitlab.garfield-labs.com/apps/aggr/internal/matcher"
 	"gitlab.garfield-labs.com/apps/aggr/internal/patterns"
+	"gitlab.garfield-labs.com/apps/aggr/internal/walker"
 )
 
 // Packer orchestrates the file packing and unpacking processes.
@@ -34,19 +34,6 @@ func (p Packer) Pack(searchPatterns []string) error {
 	log, err := Logger(p.Options.DryRun)
 	if err != nil {
 		return err
-	}
-
-	stripPrefix := ""
-
-	if p.Options.Rules.StripPrefix {
-		switch {
-		case len(searchPatterns) > 1:
-			return fmt.Errorf("cannot use --strip-prefix with multiple patterns")
-		case patterns.ContainsMeta(searchPatterns[0]):
-			return fmt.Errorf("cannot use --strip-prefix with patterns containing wildcards")
-		default:
-			stripPrefix = searchPatterns[0]
-		}
 	}
 
 	log.Debug("Packing files with options:")
@@ -143,16 +130,18 @@ func (p Packer) Pack(searchPatterns []string) error {
 		checks = append(checks, checkers.NewBinary())
 	}
 
-	m := matcher.New(checks, p.Options.Rules.Max, log)
+	w := walker.New(checks, p.Options.Rules.Max, log)
 
 	for _, path := range search {
 		log.Debugf("\n- Processing pattern: %v", path)
-		if err := m.Match(p.Options.Rules.Root, path); err != nil {
+		if err := w.Walk(os.DirFS(p.Options.Rules.Root), path); err != nil {
 			return fmt.Errorf("matching pattern %q: %w", path, err)
 		}
 	}
 
-	slices.SortFunc(m.Files, func(a, b file.File) int {
+	files := w.Files
+
+	slices.SortFunc(files, func(a, b file.File) int {
 		return strings.Compare(strings.ToLower(a.Path()), strings.ToLower(b.Path()))
 	})
 
@@ -165,7 +154,6 @@ func (p Packer) Pack(searchPatterns []string) error {
 		p.Options.DryRun,
 		p.Options.Parallel,
 		p.Options.Rules.Root,
-		stripPrefix,
 	)
 
 	// Get output writer
@@ -179,13 +167,13 @@ func (p Packer) Pack(searchPatterns []string) error {
 		}
 	}()
 
-	if err := aggregator.Pack(m.Files, writer); err != nil {
+	if err := aggregator.Pack(files, writer); err != nil {
 		return fmt.Errorf("failed to aggregate files: %w", err)
 	}
 
 	// Show completion message
 	if !p.Options.IsStdout() {
-		log.Infof("Successfully packed %d files into %s", len(m.Files), p.Options.Output)
+		log.Infof("Successfully packed %d files into %s", len(files), p.Options.Output)
 	}
 
 	return nil
@@ -223,7 +211,7 @@ func (p Packer) Unpack(path string) error {
 	archive := file.New(path)
 
 	// Create unpacker instance
-	unpacker := NewAggregator(log, p.Options.DryRun, p.Options.Parallel, p.Options.Rules.Root, "")
+	unpacker := NewAggregator(log, p.Options.DryRun, p.Options.Parallel, p.Options.Rules.Root)
 
 	ignorePatterns := patterns.Patterns(p.Options.Rules.Patterns)
 

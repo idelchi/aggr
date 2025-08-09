@@ -5,38 +5,46 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	// Version information injected at build time
-	appVersion  string
-	buildCommit string
-	buildDate   string
-)
-
-// Execute runs the root command with the specified version information.
+// Execute runs the root command for the aggr CLI application.
 func Execute(version string) error {
-	return newRootCmd(version).Execute()
-}
-
-// newRootCmd creates and configures the root command with subcommands.
-func newRootCmd(version string) *cobra.Command {
-	rootCmd := &cobra.Command{
-		Use:     "aggr",
-		Version: version,
-		Short:   "A tool to aggregate and unpack files from directories",
+	root := &cobra.Command{
+		Use:   "aggr",
+		Short: "Aggregate and unpack files",
 		Long: heredoc.Doc(`
 			aggr is a command-line utility that recursively aggregates files
 			from specified paths into a single file and unpacks them back to their
 			original directory structure.
 		`),
-		SilenceUsage:  true,
+		Example: heredoc.Doc(`
+			# Pack all files in the current directory and all subdirectories
+			$ aggr pack -o output.aggr
+
+			# Unpack the contents of the archive
+			$ aggr unpack output.aggr -o ./extracted
+		`),
+		Version:       version,
 		SilenceErrors: true,
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			// Do not print usage after basic validation has been done.
+			cmd.SilenceUsage = true
+		},
 	}
 
-	rootCmd.Root().CompletionOptions.DisableDefaultCmd = true
+	root.SetVersionTemplate("{{ .Version }}\n")
+	root.SetHelpCommand(&cobra.Command{Hidden: true})
 
-	// Add subcommands
-	rootCmd.AddCommand(Pack())
-	rootCmd.AddCommand(Unpack())
+	root.Flags().SortFlags = false
+	root.CompletionOptions.DisableDefaultCmd = true
+	cobra.EnableCommandSorting = false
 
-	return rootCmd
+	root.AddCommand(
+		Pack(),
+		Unpack(),
+	)
+
+	if err := root.Execute(); err != nil {
+		return err //nolint:wrapcheck	// Error does not need additional wrapping.
+	}
+
+	return nil
 }

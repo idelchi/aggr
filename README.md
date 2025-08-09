@@ -93,24 +93,6 @@ If a *line* in your file content starts with the marker prefix (after optional s
   * `pkg/**/testdata/**`
   * `**/Dockerfile`
 
-## Header paths & stripping
-
-* **Default header paths**: root-relative.
-  ```
-  // === AGGR: BEGIN: devenv/dev/compose.yaml ===
-  // === AGGR: BEGIN: devenv/master/compose.yaml ===
-  ```
-* **Strip prefix**: if you want headers to be *under* a single directory (e.g. just `compose.yaml`), use:
-  ```
-  aggr pack -C .. -p devenv/dev
-  ```
-  Constraints for `--strip-prefix/-p`:
-  * Must have **exactly one** input argument/pattern.
-  * That argument **cannot contain glob meta**.
-  * The prefix is interpreted relative to `--root/-C`.
-
-If you don't pass `-p`, paths remain root-relative even if you target a single directory.
-
 ## Filtering
 
 Create an `.aggrignore` with `.gitignore`-style patterns:
@@ -165,7 +147,6 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
   - `--hidden`, `-a` – Include hidden files and directories.
   - `--extensions`, `-x` – Only include listed file extensions (repeatable).
   - `--root`, `-C` – Set the root directory for matching and reading files.
-  - `--strip-prefix`, `-p` – Strip the single, non-glob directory prefix from header paths (see "Header paths & stripping").
   - `--binary`, `-b` – Include binary files.
   - `--dry-run`, `-d` – Show what would be packed without writing output.
 

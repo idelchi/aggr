@@ -52,8 +52,6 @@ func Pack() *cobra.Command {
 	cmd.Flags().
 		StringVarP(&configuration.Rules.Root, "root", "C", ".", "Root directory to use")
 	cmd.Flags().
-		BoolVarP(&configuration.Rules.StripPrefix, "strip-prefix", "p", false, "Strip the prefix from file paths")
-	cmd.Flags().
 		BoolVarP(&configuration.Rules.Binary, "binary", "b", false, "Include binary files")
 	return cmd
 }

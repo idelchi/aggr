@@ -49,8 +49,6 @@ type Aggregator struct {
 	Parallel int
 	// Root specifies the root directory for file operations during packing.
 	Root string
-	// StripPrefix defines the path prefix to remove from file paths in the archive.
-	StripPrefix string
 }
 
 // fileChunk carries one file’s data from the parser to a worker.
@@ -75,7 +73,7 @@ func (s *filesSink) add(f file.File) {
 // NewAggregator creates a new Aggregator with default configuration.
 // If parallel is ≤ 0, it defaults to 1 worker. The aggregator uses predefined
 // markers for the packed stream format.
-func NewAggregator(l *logger.Logger, dry bool, parallel int, root, stripPrefix string) *Aggregator {
+func NewAggregator(l *logger.Logger, dry bool, parallel int, root string) *Aggregator {
 	if parallel < 1 {
 		parallel = 1
 	}
@@ -87,11 +85,10 @@ func NewAggregator(l *logger.Logger, dry bool, parallel int, root, stripPrefix s
 			End:    "END:",
 			Escape: m[:len("// ===")] + "\\ " + m[len("// === "):], // insert "\" before space
 		},
-		Logger:      l,
-		Dry:         dry,
-		Parallel:    parallel,
-		Root:        root,
-		StripPrefix: stripPrefix,
+		Logger:   l,
+		Dry:      dry,
+		Parallel: parallel,
+		Root:     root,
 	}
 }
 
@@ -182,10 +179,6 @@ func (a *Aggregator) packFile(f file.File) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-
-	if a.StripPrefix != "" {
-		f = f.WithoutFolder(a.StripPrefix)
-	}
 
 	fmt.Fprintf(&buf, "%s %s\n", a.Prefixes.beginPrefix(), f.Path())
 	buf.Write(a.escape(canonical(data)))
