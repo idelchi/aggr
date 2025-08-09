@@ -8,7 +8,7 @@ on:
 
 jobs:
   release:
-    uses: idelchi/devenv/.github/workflows/gorelease.yml@dev
+    uses: idelchi/devenv/.github/workflows/gorelease.yml@main
     permissions:
       contents: write
     with:
