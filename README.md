@@ -1,11 +1,6 @@
 # aggr
 
-<h1 align="center">aggr</h1>
-
-<p align="center">
-<img alt="aggr logo" src="assets/images/agg.png" height="150" />
-<p align="center">A tool to aggregate and unpack files from directories</p>
-</p>
+A tool to aggregate and unpack files from directories</p>
 
 ---
 
@@ -19,11 +14,11 @@
 
 ## Features
 
-* Pack multiple files and directories into a single text archive.
-* Unpack archives, restoring the original directory structure.
-* Filter files by size, extension, and path using glob + `.gitignore`-style patterns.
-* Supports a project `.aggrignore` (and a user-level one in your OS config dir).
-* Skips binary files automatically and, by default, hidden files and common VCS/build dirs.
+- Pack multiple files and directories into a single text archive.
+- Unpack archives, restoring the original directory structure.
+- Filter files by size, extension, and path using glob + `.gitignore`-style patterns.
+- Supports a project `.aggrignore` (and a user-level one in your OS config dir).
+- Skips binary files automatically and, by default, hidden files and common VCS/build dirs.
 
 ## Installation
 
@@ -78,20 +73,20 @@ Description here.
 
 ### Marker escaping
 
-If a *line* in your file content starts with the marker prefix (after optional spaces/tabs), it gets escaped on pack and unescaped on unpack. Lines that contain the marker elsewhere are left alone. This keeps the archive parseable without mutating normal content.
+If a _line_ in your file content starts with the marker prefix (after optional spaces/tabs), it gets escaped on pack and unescaped on unpack. Lines that contain the marker elsewhere are left alone. This keeps the archive parseable without mutating normal content.
 
 ## Path semantics (important)
 
-* **Root directory**: By default the root is the current working directory. Use `--root DIR` or `-C DIR` to change it.
-* **Patterns**: Input patterns must be **relative** to the root and **cannot** contain absolute paths or any `..` segment. If you want to work outside CWD, use `-C`.
-* **Normalization**:
-  * `.` becomes `**` (current dir + all subdirs).
-  * A directory path with no glob meta (e.g. `foo/`) is treated as recursive: `foo/**`.
-  * If your pattern already has meta (`*?[{`), it's passed through.
-* **Glob engine**: Uses [doublestar](https://github.com/bmatcuk/doublestar). Examples:
-  * `**/*.go`
-  * `pkg/**/testdata/**`
-  * `**/Dockerfile`
+- **Root directory**: By default the root is the current working directory. Use `--root DIR` or `-C DIR` to change it.
+- **Patterns**: Input patterns must be **relative** to the root and **cannot** contain absolute paths or any `..` segment. If you want to work outside CWD, use `-C`.
+- **Normalization**:
+  - `.` becomes `**` (current dir + all subdirs).
+  - A directory path with no glob meta (e.g. `foo/`) is treated as recursive: `foo/**`.
+  - If your pattern already has meta (`*?[{`), it's passed through.
+- **Glob engine**: Uses [doublestar](https://github.com/bmatcuk/doublestar). Examples:
+  - `**/*.go`
+  - `pkg/**/testdata/**`
+  - `**/Dockerfile`
 
 ## Filtering
 
@@ -111,11 +106,12 @@ aggr pack -i "*.tmp" -i "node_modules/"
 ```
 
 **Defaults** (always applied unless you override with your own patterns):
-* Common VCS/build dirs: `.git/`, `vendor/`, `node_modules/`, etc.
-* Hidden files/dirs (those starting with `.`) are excluded **by default**. Use `-a/--hidden` to include them.
-* The output file itself (when `-o` is used).
-* The `aggr` executable.
-* **Binary files** are skipped automatically.
+
+- Common VCS/build dirs: `.git/`, `vendor/`, `node_modules/`, etc.
+- Hidden files/dirs (those starting with `.`) are excluded **by default**. Use `-a/--hidden` to include them.
+- The output file itself (when `-o` is used).
+- The `aggr` executable.
+- **Binary files** are skipped automatically.
 
 ### Extensions include list
 
@@ -134,9 +130,11 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 <summary><strong>pack</strong> — Aggregate files into an archive</summary>
 
 - **Usage:**
+
   - `aggr pack [patterns|paths...]`
 
 - **Aliases:**
+
   - `p`
 
 - **Flags:**
@@ -156,14 +154,17 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 <summary><strong>unpack</strong> — Extract files from an archive</summary>
 
 - **Usage:**
+
   - `aggr unpack <file>`
 
 - **Aliases:**
+
   - `u`, `x`
 
 - **Flags:**
+
   - `--output`, `-o` – Output directory. Default: `aggr-<hash-of-archive>` in the current directory.
-  - `--ignore`, `-i` – Ignore patterns applied *during extraction*.
+  - `--ignore`, `-i` – Ignore patterns applied _during extraction_.
   - `--ext`, `-x` – Only extract files with these extensions (repeatable).
   - `--dry` – Show what would be unpacked without writing files.
 
@@ -173,11 +174,7 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 
 ## Peculiarities & gotchas (read this)
 
-* **No absolute paths, no `..`:** For safety, any absolute path or pattern containing a `..` segment is rejected. Use `-C` if you need to work elsewhere.
-* **Pattern normalization is opinionated:** `.` becomes `**`, and a plain directory becomes recursive. If you want exact matching behavior, use explicit globs.
-* **Markers only escape at line start:** Only lines that *start* with the marker (after spaces/tabs) get escaped. Text in the middle of a line is left as-is.
-* **Binary detection is conservative:** Files that look binary are skipped. If you need to force-include something unusual, use `--binary/-b` to disable the check.
-
-## Demo
-
-![Demo](assets/gifs/agg.gif)
+- **No absolute paths, no `..`:** For safety, any absolute path or pattern containing a `..` segment is rejected. Use `-C` if you need to work elsewhere.
+- **Pattern normalization is opinionated:** `.` becomes `**`, and a plain directory becomes recursive. If you want exact matching behavior, use explicit globs.
+- **Markers only escape at line start:** Only lines that _start_ with the marker (after spaces/tabs) get escaped. Text in the middle of a line is left as-is.
+- **Binary detection is conservative:** Files that look binary are skipped. If you need to force-include something unusual, use `--binary/-b` to disable the check.
