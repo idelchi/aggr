@@ -21,11 +21,14 @@ func Unpack() *cobra.Command {
 			Reads an aggregated file and recreates the original files and directories.
 			The command extracts all files from the archive and restores them to their
 			original relative paths within the specified output directory.
+		`),
+		Example: heredoc.Doc(`
+			# Unpack to current directory
+			$ agg unpack archive.aggr
 
-			Examples:
-			agg unpack archive.agg             # Unpack to current directory
-			agg unpack -o extracted/ archive.agg  # Unpack to extracted/ directory`,
-		),
+			# Unpack to extracted/ directory
+			$ agg unpack -o extracted/ archive.aggr
+		`),
 		Aliases: []string{"u", "x"},
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

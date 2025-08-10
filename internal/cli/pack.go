@@ -36,7 +36,7 @@ func Pack() *cobra.Command {
 	}
 
 	// Setup flags for the pack command
-	cmd.Flags().StringVarP(&configuration.Output, "output", "o", "pack.agg", "Specify output file (default: stdout)")
+	cmd.Flags().StringVarP(&configuration.Output, "output", "o", "pack.aggr", "Specify output file (default: stdout)")
 	cmd.Flags().
 		StringSliceVarP(&configuration.Rules.Patterns, "ignore", "i", []string{}, "Additional .aggignore patterns.")
 	cmd.Flags().

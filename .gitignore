@@ -7,7 +7,7 @@
 .bash_history
 .gitconfig
 .env
-*.agg
+*.aggr
 
 
 # Ignored folders
