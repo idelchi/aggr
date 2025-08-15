@@ -23,7 +23,7 @@ A tool to aggregate and unpack files from directories</p>
 ## Installation
 
 ```sh
-curl -sSL https://raw.githubusercontent.com/idelchi/agg/refs/heads/main/install.sh | sh -s -- -d ~/.local/bin
+curl -sSL https://raw.githubusercontent.com/idelchi/aggr/refs/heads/dev/install.sh | sh -s -- -d ~/.local/bin
 ```
 
 ## Usage
