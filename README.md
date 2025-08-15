@@ -23,7 +23,7 @@ A tool to aggregate and unpack files from directories</p>
 ## Installation
 
 ```sh
-curl -sSL https://raw.githubusercontent.com/idelchi/agg/refs/heads/main/install.sh | sh -s -- -d ~/.local/bin
+curl -sSL https://raw.githubusercontent.com/idelchi/aggr/refs/heads/main/install.sh | sh -s -- -d ~/.local/bin
 ```
 
 ## Usage
@@ -45,7 +45,7 @@ aggr pack '**/folder/**/*.go'
 
 ```sh
 # Unpack an archive to a specific directory
-aggr unpack -o extracted/ archive.agg
+aggr unpack -o extracted/ pack.aggr
 ```
 
 ## Format
@@ -172,7 +172,7 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 
 </details>
 
-## Peculiarities & gotchas (read this)
+## Peculiarities & gotchas
 
 - **No absolute paths, no `..`:** For safety, any absolute path or pattern containing a `..` segment is rejected. Use `-C` if you need to work elsewhere.
 - **Pattern normalization is opinionated:** `.` becomes `**`, and a plain directory becomes recursive. If you want exact matching behavior, use explicit globs.
