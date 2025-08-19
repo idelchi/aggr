@@ -134,11 +134,9 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 <summary><strong>pack</strong> — Aggregate files into an archive</summary>
 
 - **Usage:**
-
   - `aggr pack [patterns|paths...]`
 
 - **Aliases:**
-
   - `p`
 
 - **Flags:**
@@ -158,15 +156,12 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 <summary><strong>unpack</strong> — Extract files from an archive</summary>
 
 - **Usage:**
-
   - `aggr unpack <file>`
 
 - **Aliases:**
-
   - `u`, `x`
 
 - **Flags:**
-
   - `--output`, `-o` – Output directory. Default: `aggr-<hash-of-archive>` in the current directory.
   - `--ignore`, `-i` – Ignore patterns applied _during extraction_.
   - `--ext`, `-x` – Only extract files with these extensions (repeatable).
