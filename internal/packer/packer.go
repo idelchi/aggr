@@ -1,6 +1,7 @@
 package packer
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -9,7 +10,6 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/idelchi/godyl/pkg/path/file"
-	"github.com/idelchi/godyl/pkg/path/files"
 	"github.com/idelchi/godyl/pkg/path/folder"
 	"github.com/idelchi/godyl/pkg/pretty"
 
@@ -23,24 +23,30 @@ import (
 type Packer struct {
 	// Options contains the configuration settings for the packer.
 	Options config.Options
-	// files holds the collection of files being processed.
-	files files.Files
 }
 
 // Pack aggregates files matching the given search patterns into a single output.
 // It processes the patterns, applies filtering rules, and writes the aggregated
 // result to the configured output destination.
-func (p Packer) Pack(searchPatterns []string) error {
+//
+//nolint:gocognit,funlen	// TODO(Idelchi): Refactor this function to reduce complexity.
+func (p Packer) Pack() error {
+	searchPatterns := p.Options.Search
+
 	log, err := Logger(p.Options.DryRun)
 	if err != nil {
 		return err
 	}
 
 	log.Debug("Packing files with options:")
+
 	if p.Options.DryRun {
 		pretty.PrintYAML(p.Options)
+
+		//nolint:forbidigo	// Function prints out to the console.
 		fmt.Printf("args: %v\n", searchPatterns)
 	}
+
 	search := patterns.Patterns(searchPatterns)
 
 	if err := search.Validate(); err != nil {
@@ -66,6 +72,7 @@ func (p Packer) Pack(searchPatterns []string) error {
 	aggrignore, ok := ActiveAggrignore()
 	if ok {
 		log.Debugf("  - Found .aggignore file: %q", aggrignore)
+
 		lines, err := aggrignore.Lines()
 		if err != nil {
 			return fmt.Errorf("reading %q: %w", aggrignore, err)
@@ -79,6 +86,7 @@ func (p Packer) Pack(searchPatterns []string) error {
 	log.Debug("- Adding ignore patterns:")
 	log.Debugf("  - .aggignore: %v", ignorePatterns)
 	log.Debugf("  - default: %v", config.DefaultExcludes)
+
 	ignorePatterns = append(ignorePatterns, config.DefaultExcludes...)
 
 	// Exclude the executable itself
@@ -92,17 +100,21 @@ func (p Packer) Pack(searchPatterns []string) error {
 	// Add output file to excludes if specified
 	if !p.Options.IsStdout() {
 		log.Debugf("  - the output file: %q", p.Options.Output)
+
 		ignorePatterns = append(ignorePatterns, p.Options.Output)
 	}
 
 	if len(p.Options.Rules.Extensions) > 0 {
 		extras := patterns.Patterns{"*"}
+
 		extras = append(extras, ExtensionsToPatterns(p.Options.Rules.Extensions)...)
 		log.Debugf("  - file extension patterns passed on commandline: %v", extras)
+
 		ignorePatterns = append(ignorePatterns, extras...)
 	}
 
 	log.Debugf("  - patterns passed on commandline: %v", p.Options.Rules.Patterns)
+
 	ignorePatterns = append(ignorePatterns, p.Options.Rules.Patterns...)
 
 	// Exclude hidden folders & files if hidden is false
@@ -116,6 +128,7 @@ func (p Packer) Pack(searchPatterns []string) error {
 
 	if len(ignorePatterns) > 0 {
 		log.Debug("- The following patterns will be applied:")
+
 		for _, pattern := range ignorePatterns {
 			log.Debugf("  - %s", pattern)
 		}
@@ -123,6 +136,7 @@ func (p Packer) Pack(searchPatterns []string) error {
 
 	checks := []checkers.Checker{
 		checkers.NewIgnore(ignorer),
+		//nolint:gosec		// Cannot be negative.
 		checkers.NewSize(int(bytes)),
 	}
 
@@ -130,16 +144,17 @@ func (p Packer) Pack(searchPatterns []string) error {
 		checks = append(checks, checkers.NewBinary())
 	}
 
-	w := walker.New(checks, p.Options.Rules.Max, log)
+	walker := walker.New(checks, p.Options.Rules.Max, log)
 
 	for _, path := range search {
 		log.Debugf("\n- Processing pattern: %v", path)
-		if err := w.Walk(os.DirFS(p.Options.Rules.Root), path); err != nil {
+
+		if err := walker.Walk(os.DirFS(p.Options.Rules.Root), path); err != nil {
 			return fmt.Errorf("matching pattern %q: %w", path, err)
 		}
 	}
 
-	files := w.Files
+	files := walker.Files
 
 	slices.SortFunc(files, func(a, b file.File) int {
 		return strings.Compare(strings.ToLower(a.Path()), strings.ToLower(b.Path()))
@@ -161,9 +176,10 @@ func (p Packer) Pack(searchPatterns []string) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		if writer != os.Stdout {
-			writer.Close()
+			_ = writer.Close()
 		}
 	}()
 
@@ -181,6 +197,8 @@ func (p Packer) Pack(searchPatterns []string) error {
 
 // PromptForFolderExists prompts the user for confirmation if the target folder already exists.
 // It returns true if the user confirms to proceed, false otherwise.
+//
+//nolint:forbidigo	// Function prints out to the console.
 func PromptForFolderExists(folder folder.Folder) bool {
 	if !folder.Exists() {
 		return true
@@ -189,19 +207,20 @@ func PromptForFolderExists(folder folder.Folder) bool {
 	fmt.Printf("The folder %q already exists.\n", folder)
 	fmt.Println("This may overwrite existing files. Proceed with caution.")
 	fmt.Print("Continue? (y/N): ")
-	var response string
-	fmt.Scanln(&response)
-	if strings.ToLower(response) == "y" {
-		return true
-	}
 
-	return false
+	var response string
+
+	_, _ = fmt.Scanln(&response)
+
+	return strings.ToLower(response) == "y"
 }
 
 // Unpack extracts files from an aggregated file and recreates the original directory structure.
 // It reads the packed file from the given path and writes the extracted files to the
 // configured output directory.
-func (p Packer) Unpack(path string) error {
+func (p Packer) Unpack() error {
+	path := p.Options.Search[0] // Expecting a single file path for unpacking
+
 	log, err := Logger(p.Options.DryRun)
 	if err != nil {
 		return err
@@ -217,6 +236,7 @@ func (p Packer) Unpack(path string) error {
 
 	if len(ignorePatterns) > 0 {
 		log.Debug("- Using ignore patterns:")
+
 		for _, pattern := range ignorePatterns {
 			log.Debugf("  - %s", pattern)
 		}
@@ -225,6 +245,7 @@ func (p Packer) Unpack(path string) error {
 	if len(p.Options.Rules.Extensions) > 0 {
 		extras := patterns.Patterns{"*"}
 		log.Debugf("- Adding file extension patterns: %v", extras)
+
 		extras = append(extras, ExtensionsToPatterns(p.Options.Rules.Extensions)...)
 		ignorePatterns = append(ignorePatterns, extras...)
 	}
@@ -241,12 +262,12 @@ func (p Packer) Unpack(path string) error {
 			return fmt.Errorf("calculating archive hash: %w", err)
 		}
 
-		output = folder.New(fmt.Sprintf("aggr-%s", hash))
+		output = folder.New("aggr-" + hash)
 	}
 
 	// if output exists as a directory, prompt the user
 	if !PromptForFolderExists(output) {
-		return fmt.Errorf("aborted unpacking")
+		return errors.New("aborted unpacking")
 	}
 
 	// Unpack the files
@@ -267,9 +288,11 @@ func (p Packer) Unpack(path string) error {
 		for _, f := range files {
 			log.Debugf("  - %q", f)
 		}
+
 		return nil
 	}
 
 	log.Infof("Successfully unpacked %d files from %q to %q", len(files), archive, output)
+
 	return nil
 }

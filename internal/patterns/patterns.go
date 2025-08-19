@@ -23,17 +23,20 @@ func (p Patterns) AsGitIgnore() *ignore.GitIgnore {
 // TrimEmpty removes empty and whitespace-only patterns from the collection.
 func (p Patterns) TrimEmpty() Patterns {
 	var out Patterns
+
 	for _, pat := range p {
 		if strings.TrimSpace(pat) != "" {
 			out = append(out, pat)
 		}
 	}
+
 	return out
 }
 
 // Normalized returns a new Patterns instance with all patterns normalized relative to the root directory.
 func (p Patterns) Normalized(root string) Patterns {
-	var out Patterns
+	out := make(Patterns, 0, len(p))
+
 	for _, pat := range p {
 		out = append(out, Normalize(pat, root))
 	}
@@ -50,6 +53,7 @@ func (p Patterns) Validate() error {
 			return err
 		}
 	}
+
 	return nil
 }
 

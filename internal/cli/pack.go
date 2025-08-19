@@ -5,7 +5,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.garfield-labs.com/apps/aggr/internal/config"
-	"gitlab.garfield-labs.com/apps/aggr/internal/packer"
 )
 
 // Pack creates and returns the pack command for aggregating files.
@@ -23,15 +22,8 @@ func Pack() *cobra.Command {
 		`),
 		Aliases: []string{"p"},
 		Args:    cobra.ArbitraryArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				args = []string{"."} // Default to current directory if no args provided
-			}
-			packer := packer.Packer{
-				Options: configuration,
-			}
-
-			return packer.Pack(args)
+		RunE: func(_ *cobra.Command, args []string) error {
+			return Packer(args, configuration).Pack()
 		},
 	}
 
@@ -53,5 +45,6 @@ func Pack() *cobra.Command {
 		StringVarP(&configuration.Rules.Root, "root", "C", ".", "Root directory to use")
 	cmd.Flags().
 		BoolVarP(&configuration.Rules.Binary, "binary", "b", false, "Include binary files")
+
 	return cmd
 }

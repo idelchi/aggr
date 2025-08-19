@@ -19,19 +19,6 @@ func NewIgnore(ignore *ignore.GitIgnore) *Ignore {
 	return &Ignore{ignore: ignore}
 }
 
-func (i *Ignore) check(path string) error {
-	matchPath := path
-	for strings.HasPrefix(matchPath, "../") {
-		matchPath = strings.TrimPrefix(matchPath, "../")
-	}
-
-	if ok, pattern := i.ignore.MatchesPathHow(matchPath); ok {
-		return fmt.Errorf("%w: in ignore patterns %q", ErrSkip, pattern.Pattern)
-	}
-
-	return nil // not a file to ignore, continue processing
-}
-
 // Check returns an error if the file matches any of the configured ignore patterns.
 func (i *Ignore) Check(path string) error {
 	if err := i.check(path); err != nil {
@@ -44,4 +31,18 @@ func (i *Ignore) Check(path string) error {
 	}
 
 	return i.check(path)
+}
+
+// check checks if the given path matches any ignore patterns.
+func (i *Ignore) check(path string) error {
+	matchPath := path
+	for strings.HasPrefix(matchPath, "../") {
+		matchPath = strings.TrimPrefix(matchPath, "../")
+	}
+
+	if ok, pattern := i.ignore.MatchesPathHow(matchPath); ok {
+		return fmt.Errorf("%w: in ignore patterns %q", ErrSkip, pattern.Pattern)
+	}
+
+	return nil // not a file to ignore, continue processing
 }

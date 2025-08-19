@@ -2,6 +2,8 @@ package config
 
 // Options holds the configuration settings for the aggregation tool.
 type Options struct {
+	// Search specifies the search patterns for file aggregation.
+	Search []string
 	// Output specifies the output file path for aggregated data.
 	Output string
 	// DryRun indicates whether to perform a dry run without writing output.

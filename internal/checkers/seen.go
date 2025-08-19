@@ -23,5 +23,6 @@ func (s *Seen) Check(path string) error {
 	if s.Files.Contains(file.New(path)) {
 		return fmt.Errorf("%w: already included", ErrSkip)
 	}
+
 	return nil
 }

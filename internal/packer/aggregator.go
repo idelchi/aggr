@@ -51,7 +51,7 @@ type Aggregator struct {
 	Root string
 }
 
-// fileChunk carries one file’s data from the parser to a worker.
+// fileChunk carries one file's data from the parser to a worker.
 type fileChunk struct {
 	path string
 	data []byte
@@ -73,19 +73,21 @@ func (s *filesSink) add(f file.File) {
 // NewAggregator creates a new Aggregator with default configuration.
 // If parallel is ≤ 0, it defaults to 1 worker. The aggregator uses predefined
 // markers for the packed stream format.
-func NewAggregator(l *logger.Logger, dry bool, parallel int, root string) *Aggregator {
+func NewAggregator(log *logger.Logger, dry bool, parallel int, root string) *Aggregator {
 	if parallel < 1 {
 		parallel = 1
 	}
-	m := "// === AGGR:"
+
+	marker := "// === AGGR:"
+
 	return &Aggregator{
 		Prefixes: Prefixes{
-			Marker: m,
+			Marker: marker,
 			Begin:  "BEGIN:",
 			End:    "END:",
-			Escape: m[:len("// ===")] + "\\ " + m[len("// === "):], // insert "\" before space
+			Escape: marker[:len("// ===")] + "\\ " + marker[len("// === "):], // insert "\" before space
 		},
-		Logger:   l,
+		Logger:   log,
 		Dry:      dry,
 		Parallel: parallel,
 		Root:     root,
@@ -94,84 +96,96 @@ func NewAggregator(l *logger.Logger, dry bool, parallel int, root string) *Aggre
 
 // Pack writes a packed representation of the file set to the provided writer.
 // It processes all files concurrently and writes them in the packed format.
-func (a *Aggregator) Pack(set files.Files, w io.Writer) error {
+func (a *Aggregator) Pack(set files.Files, writer io.Writer) error {
 	if !a.Dry {
-		if err := a.packFiles(set, w); err != nil {
+		if err := a.packFiles(set, writer); err != nil {
 			return err
 		}
 	}
-	return a.writeFooter(set, w)
+
+	return a.writeFooter(set, writer)
 }
 
 // Unpack reads a packed stream and recreates the original files under the destination directory.
 // It returns the list of files that were written (or would be written in dry run mode).
 // The checkers parameter allows filtering which files to extract.
-func (a *Aggregator) Unpack(r file.File, dst string, chk checkers.Checkers) (files.Files, error) {
+func (a *Aggregator) Unpack(reader file.File, dst string, chk checkers.Checkers) (files.Files, error) {
 	var sink filesSink
 
-	eg, ctx := errgroup.WithContext(context.Background())
-	eg.SetLimit(a.Parallel)
+	errGroup, ctx := errgroup.WithContext(context.Background())
+	errGroup.SetLimit(a.Parallel)
 
-	ch := make(chan fileChunk, a.Parallel*2)
+	const channelBufferFactor = 2
+
+	chunks := make(chan fileChunk, a.Parallel*channelBufferFactor)
 
 	// Worker goroutines.
-	for i := 0; i < a.Parallel; i++ {
-		eg.Go(func() error {
-			for c := range ch {
-				if err := a.writeChunk(c, dst, chk, &sink); err != nil {
+	for range a.Parallel {
+		errGroup.Go(func() error {
+			for chunk := range chunks {
+				if err := a.writeChunk(chunk, dst, chk, &sink); err != nil {
 					return err
 				}
 			}
+
 			return nil
 		})
 	}
 
 	// Parser goroutine.
-	if err := a.parseStream(ctx, r, ch); err != nil {
-		close(ch)
-		_ = eg.Wait()
-		return nil, err
-	}
-	close(ch)
+	if err := a.parseStream(ctx, reader, chunks); err != nil {
+		close(chunks)
 
-	if err := eg.Wait(); err != nil {
+		_ = errGroup.Wait()
+
 		return nil, err
 	}
+
+	close(chunks)
+
+	if err := errGroup.Wait(); err != nil {
+		return nil, err
+	}
+
 	return sink.fs, nil
 }
 
 // packFiles packs every file in set and writes each block to w in order.
-func (a *Aggregator) packFiles(set files.Files, w io.Writer) error {
-	eg, _ := errgroup.WithContext(context.Background())
-	eg.SetLimit(a.Parallel)
+func (a *Aggregator) packFiles(set files.Files, writer io.Writer) error {
+	errGroup, _ := errgroup.WithContext(context.Background())
+	errGroup.SetLimit(a.Parallel)
 
 	blocks := make([][]byte, len(set))
 
-	for i, f := range set {
-		i, f := i, f
-		eg.Go(func() error {
-			b, err := a.packFile(f)
+	for index, file := range set {
+		errGroup.Go(func() error {
+			b, err := a.packFile(file)
 			if err != nil {
 				return err
 			}
-			blocks[i] = b
+
+			blocks[index] = b
+
 			return nil
 		})
 	}
-	if err := eg.Wait(); err != nil {
+
+	if err := errGroup.Wait(); err != nil {
 		return err
 	}
+
 	for _, b := range blocks {
-		if _, err := w.Write(b); err != nil {
+		if _, err := writer.Write(b); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
 // packFile returns the packed representation of a single file.
-func (a *Aggregator) packFile(f file.File) ([]byte, error) {
-	realPath := file.New(a.Root, f.Path())
+func (a *Aggregator) packFile(inputFile file.File) ([]byte, error) {
+	realPath := file.New(a.Root, inputFile.Path())
 
 	data, err := realPath.Read()
 	if err != nil {
@@ -180,32 +194,39 @@ func (a *Aggregator) packFile(f file.File) ([]byte, error) {
 
 	var buf bytes.Buffer
 
-	fmt.Fprintf(&buf, "%s %s\n", a.Prefixes.beginPrefix(), f.Path())
+	fmt.Fprintf(&buf, "%s %s\n", a.Prefixes.beginPrefix(), inputFile.Path())
 	buf.Write(a.escape(canonical(data)))
-	fmt.Fprintf(&buf, "%s %s\n\n", a.Prefixes.endPrefix(), f.Path())
+	fmt.Fprintf(&buf, "%s %s\n\n", a.Prefixes.endPrefix(), inputFile.Path())
+
 	return buf.Bytes(), nil
 }
 
 // writeFooter appends the tree and file count summary.
-func (a *Aggregator) writeFooter(set files.Files, w io.Writer) error {
-	if _, err := io.WriteString(w, "\ntree\n"); err != nil {
+func (a *Aggregator) writeFooter(set files.Files, writer io.Writer) error {
+	if _, err := io.WriteString(writer, "\ntree\n"); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, tree.Generate(set).String()); err != nil {
+
+	if _, err := io.WriteString(writer, tree.Generate(set).String()); err != nil {
 		return err
 	}
-	_, err := io.WriteString(w, fmt.Sprintf("\n%d files\n", len(set)))
+
+	_, err := io.WriteString(writer, fmt.Sprintf("\n%d files\n", len(set)))
+
 	return err
 }
 
-func (a *Aggregator) parseStream(ctx context.Context, r file.File, ch chan<- fileChunk) error {
-	f, err := r.Open()
+// parseStream reads a packed stream and sends file chunks to the provided channel.
+//
+//nolint:gocognit	// Function is complex by design.
+func (a *Aggregator) parseStream(ctx context.Context, reader file.File, chunks chan<- fileChunk) error {
+	openFile, err := reader.Open()
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer openFile.Close()
 
-	br := bufio.NewReader(f)
+	bufReader := bufio.NewReader(openFile)
 	begin := a.Prefixes.beginPrefix()
 	end := a.Prefixes.endPrefix()
 
@@ -222,7 +243,7 @@ func (a *Aggregator) parseStream(ctx context.Context, r file.File, ch chan<- fil
 		default:
 		}
 
-		line, err := br.ReadString('\n') // returns line w/ '\n' or EOF
+		line, err := bufReader.ReadString('\n') // returns line w/ '\n' or EOF
 		if err != nil && err != io.EOF && line == "" {
 			return err
 		}
@@ -232,8 +253,11 @@ func (a *Aggregator) parseStream(ctx context.Context, r file.File, ch chan<- fil
 			if inFile {
 				return fmt.Errorf("nested %q for %s", begin, curPath)
 			}
+
 			curPath = strings.TrimSpace(line[len(begin):])
+
 			buf.Reset()
+
 			inFile = true
 
 		case strings.HasPrefix(line, end):
@@ -241,8 +265,10 @@ func (a *Aggregator) parseStream(ctx context.Context, r file.File, ch chan<- fil
 			if !inFile || p != curPath {
 				return fmt.Errorf("%q without matching %q for %s", end, begin, p)
 			}
+
 			dataCopy := append([]byte(nil), buf.Bytes()...)
-			ch <- fileChunk{path: curPath, data: dataCopy}
+			chunks <- fileChunk{path: curPath, data: dataCopy}
+
 			inFile = false
 
 		default:
@@ -259,34 +285,39 @@ func (a *Aggregator) parseStream(ctx context.Context, r file.File, ch chan<- fil
 	if inFile {
 		return fmt.Errorf("unterminated file %q", curPath)
 	}
+
 	return nil
 }
 
 // writeChunk writes one unpacked file to disk unless Dry is true.
-func (a *Aggregator) writeChunk(c fileChunk, dst string, chk checkers.Checkers, sink *filesSink) error {
-	data := canonical(a.unescape(c.data))
+func (a *Aggregator) writeChunk(chunk fileChunk, dst string, checkers checkers.Checkers, sink *filesSink) error {
+	data := canonical(a.unescape(chunk.data))
 
-	if err := chk.Check(c.path); err != nil {
-		a.Logger.Debugf("  - %s: %v", c.path, err)
+	if err := checkers.Check(chunk.path); err != nil {
+		a.Logger.Debugf("  - %s: %v", chunk.path, err)
+
 		return nil
 	}
 
-	f := file.New(dst, c.path)
-	sink.add(f)
+	outputFile := file.New(dst, chunk.path)
+	sink.add(outputFile)
 
 	if a.Dry {
 		return nil
 	}
-	if err := f.Create(); err != nil {
-		return fmt.Errorf("create %s: %w", f, err)
-	}
-	w, err := f.OpenForWriting()
-	if err != nil {
-		return fmt.Errorf("open %s: %w", f, err)
-	}
-	defer w.Close()
 
-	_, err = w.Write(data)
+	if err := outputFile.Create(); err != nil {
+		return fmt.Errorf("create %s: %w", outputFile, err)
+	}
+
+	fileWriter, err := outputFile.OpenForWriting()
+	if err != nil {
+		return fmt.Errorf("open %s: %w", outputFile, err)
+	}
+	defer fileWriter.Close()
+
+	_, err = fileWriter.Write(data)
+
 	return err
 }
 
@@ -303,6 +334,7 @@ func (a *Aggregator) escape(data []byte) []byte {
 			lines[i] = strings.Replace(line, a.Prefixes.Marker, a.Prefixes.Escape, 1)
 		}
 	}
+
 	return []byte(strings.Join(lines, "\n"))
 }
 
@@ -313,11 +345,13 @@ func (a *Aggregator) unescape(data []byte) []byte {
 			lines[i] = strings.Replace(line, a.Prefixes.Escape, a.Prefixes.Marker, 1)
 		}
 	}
+
 	return []byte(strings.Join(lines, "\n"))
 }
 
 // canonical trims all trailing newlines and appends one '\n'.
 func canonical(data []byte) []byte {
 	data = bytes.TrimRight(data, "\n")
+
 	return append(data, '\n')
 }

@@ -30,9 +30,8 @@ func (s *Size) Check(path string) error {
 		return nil
 	}
 
-	if ok, err := file.LargerThan(int64(s.Size)); err != nil {
-		return nil
-	} else if ok {
+	if ok, err := file.LargerThan(int64(s.Size)); err == nil && ok {
+		//nolint:gosec 	// File size from os.FileInfo cannot be negative.
 		return fmt.Errorf("%w: larger than requested max size %s", ErrSkip, humanize.Bytes(uint64(s.Size)))
 	}
 

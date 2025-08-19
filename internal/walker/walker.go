@@ -23,10 +23,10 @@ type Logger interface {
 
 // New creates a new Walker with the specified checkers, file limit, and logger.
 // It automatically adds a Seen checker to prevent duplicate file inclusion.
-func New(checks checkers.Checkers, max int, logger Logger) *Walker {
+func New(checks checkers.Checkers, maxFiles int, logger Logger) *Walker {
 	walker := Walker{
 		Logger: logger,
-		Max:    max,
+		Max:    maxFiles,
 	}
 
 	checkers := append(checkers.Checkers{
@@ -57,7 +57,7 @@ type Walker struct {
 func (w *Walker) Walk(fsys fs.FS, pattern string, opts ...doublestar.GlobOption) error {
 	err := doublestar.GlobWalk(
 		fsys, pattern,
-		func(p string, d fs.DirEntry) error {
+		func(p string, dir fs.DirEntry) error {
 			if p == "." {
 				return nil
 			}
@@ -65,7 +65,6 @@ func (w *Walker) Walk(fsys fs.FS, pattern string, opts ...doublestar.GlobOption)
 			fullPath := file.New(p)
 
 			if err := w.Checkers.Check(fullPath.Path()); err != nil {
-
 				if !strings.Contains(fullPath.Path(), ".git") {
 					w.Logger.Debugf("  - %q: %v", fullPath, err)
 				}
@@ -77,7 +76,7 @@ func (w *Walker) Walk(fsys fs.FS, pattern string, opts ...doublestar.GlobOption)
 				return nil
 			}
 
-			if !d.IsDir() {
+			if !dir.IsDir() {
 				w.Files.AddFile(fullPath)
 
 				w.Logger.Debugf("  - %q: included", fullPath)

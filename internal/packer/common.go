@@ -16,6 +16,7 @@ import (
 // In dry run mode, it sets the level to DEBUG for verbose output.
 func Logger(dry bool) (*logger.Logger, error) {
 	level := logger.INFO
+
 	if dry {
 		level = logger.DEBUG
 	}
@@ -49,6 +50,7 @@ func GetOutputWriter(options config.Options) (*os.File, error) {
 // Returns the found file and true if an ignore file exists, otherwise false.
 func ActiveAggrignore() (file.File, bool) {
 	files := files.New(".", config.DefaultIgnoreFile)
+
 	configDir, err := os.UserConfigDir()
 	if err == nil {
 		files = append(files, file.New(configDir, config.DefaultIgnoreFile))
@@ -63,7 +65,7 @@ func ExtensionsToPatterns(extensions []string) patterns.Patterns {
 	patterns := patterns.Patterns{}
 
 	for _, ext := range extensions {
-		patterns = append(patterns, fmt.Sprintf("!*.%s", ext))
+		patterns = append(patterns, "!*."+ext)
 	}
 
 	return patterns
