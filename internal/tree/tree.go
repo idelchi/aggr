@@ -11,7 +11,7 @@ import (
 // Generate creates a visual tree structure from a list of file paths.
 // It returns a treeprint.Tree that can be rendered as ASCII art showing
 // the hierarchical organization of the provided files.
-func Generate(fileList files.Files) treeprint.Tree {
+func Generate(fileList files.Files) treeprint.Tree { //nolint:ireturn 	// Function should return interface.
 	paths := fileList.AsSlice()
 	root := treeprint.New()
 	branches := map[string]treeprint.Tree{
@@ -29,17 +29,21 @@ func Generate(fileList files.Files) treeprint.Tree {
 // addPathToTree adds a single path to the tree structure.
 func addPathToTree(path string, root treeprint.Tree, branches map[string]treeprint.Tree) {
 	parts := strings.Split(path, "/")
-	var keyBuilder []string
+
+	keyBuilder := make([]string, 0, len(parts))
+
 	currentTree := root
 
 	for i, part := range parts {
 		keyBuilder = append(keyBuilder, part)
+
 		key := strings.Join(keyBuilder, "/")
 		isLastPart := i == len(parts)-1
 
 		// Check if this branch already exists
 		if existingBranch, exists := branches[key]; exists {
 			currentTree = existingBranch
+
 			continue
 		}
 
@@ -50,6 +54,7 @@ func addPathToTree(path string, root treeprint.Tree, branches map[string]treepri
 		} else {
 			// This is a directory (branch)
 			newBranch := currentTree.AddBranch(part)
+
 			branches[key] = newBranch
 			currentTree = newBranch
 		}

@@ -1,8 +1,6 @@
 module gitlab.garfield-labs.com/apps/aggr
 
-go 1.24.4
-
-toolchain go1.24.6
+go 1.25
 
 require (
 	github.com/MakeNowJust/heredoc/v2 v2.0.1

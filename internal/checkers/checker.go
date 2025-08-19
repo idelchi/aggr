@@ -26,6 +26,8 @@ func (c Checkers) Check(path string) error {
 }
 
 var (
-	ErrSkip  = errors.New("skipping")
+	// ErrSkip indicates that a file should be skipped.
+	ErrSkip = errors.New("skipping")
+	// ErrAbort indicates that the checking process should be aborted.
 	ErrAbort = errors.New("aborting")
 )

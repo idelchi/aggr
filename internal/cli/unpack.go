@@ -5,7 +5,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.garfield-labs.com/apps/aggr/internal/config"
-	"gitlab.garfield-labs.com/apps/aggr/internal/packer"
 )
 
 // Unpack creates and returns the unpack command for extracting aggregated files.
@@ -31,25 +30,18 @@ func Unpack() *cobra.Command {
 		`),
 		Aliases: []string{"u", "x"},
 		Args:    cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				args = []string{"."} // Default to current directory if no args provided
-			}
-			packer := packer.Packer{
-				Options: configuration,
-			}
-
-			return packer.Unpack(args[0])
+		RunE: func(_ *cobra.Command, args []string) error {
+			return Packer(args, configuration).Unpack()
 		},
 	}
 
 	// Setup flags for the unpack command
 	cmd.Flags().
-		StringVarP(&configuration.Output, "output", "o", "", "Specify output directory. Defaults to '$(pwd)/aggr-<hash of <file>'")
+		StringVarP(&configuration.Output, "output", "o", "", "Output directory. Defaults to '$(pwd)/aggr-[hash of <file>]'")
 	cmd.Flags().
 		StringSliceVarP(&configuration.Rules.Patterns, "ignore", "i", []string{}, "Additional .aggignore patterns.")
 	cmd.Flags().
-		BoolVar(&configuration.DryRun, "dry-run", false, "Show which files would be processed without reading contents")
+		BoolVarP(&configuration.DryRun, "dry-run", "d", false, "Show which files would be processed without reading contents")
 	cmd.Flags().
 		StringSliceVarP(&configuration.Rules.Extensions, "extensions", "x", []string{}, "File extensions to include")
 

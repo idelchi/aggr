@@ -17,7 +17,9 @@ const (
 	DefaultMaxFiles = 1000
 )
 
-// Default exclude patterns that are always applied.
+// DefaultExcludes lists exclude patterns that are always applied.
+//
+//nolint:gochecknoglobals 	// Fair use of global variables.
 var DefaultExcludes = patterns.Patterns{
 	// Exclude all kinds of executables
 	"*.exe",
@@ -37,6 +39,8 @@ var DefaultExcludes = patterns.Patterns{
 }
 
 // DefaultHidden is the default patterns for hidden files and directories.
+//
+//nolint:gochecknoglobals 	// Fair use of global variables.
 var DefaultHidden = patterns.Patterns{
 	// Exclude hidden files and directories by default
 	".*",

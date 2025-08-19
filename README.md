@@ -10,7 +10,8 @@ A tool to aggregate and unpack files from directories</p>
 [![Build Status](https://github.com/idelchi/aggr/actions/workflows/github-actions.yml/badge.svg)](https://github.com/idelchi/aggr/actions/workflows/github-actions.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-`aggr` is a command-line utility that recursively aggregates files from specified paths into a single file and unpacks them back to their original directory structure.
+`aggr` is a command-line utility that recursively aggregates files from specified paths into a single file and
+unpacks them back to their original directory structure.
 
 ## Features
 
@@ -52,7 +53,7 @@ aggr unpack -o extracted/ pack.aggr
 
 Archives are plain text files with simple markers to delimit file content.
 
-```
+```text
 // === AGGR: BEGIN: src/main.go ===
 package main
 
@@ -73,12 +74,15 @@ Description here.
 
 ### Marker escaping
 
-If a _line_ in your file content starts with the marker prefix (after optional spaces/tabs), it gets escaped on pack and unescaped on unpack. Lines that contain the marker elsewhere are left alone. This keeps the archive parseable without mutating normal content.
+If a _line_ in your file content starts with the marker prefix (after optional spaces/tabs),
+it gets escaped on pack and unescaped on unpack. Lines that contain the marker elsewhere are left alone.
+This keeps the archive parseable without mutating normal content.
 
 ## Path semantics (important)
 
 - **Root directory**: By default the root is the current working directory. Use `--root DIR` or `-C DIR` to change it.
-- **Patterns**: Input patterns must be **relative** to the root and **cannot** contain absolute paths or any `..` segment. If you want to work outside CWD, use `-C`.
+- **Patterns**: Input patterns must be **relative** to the root and **cannot** contain absolute paths or any `..` segment.
+  If you want to work outside CWD, use `-C`.
 - **Normalization**:
   - `.` becomes `**` (current dir + all subdirs).
   - A directory path with no glob meta (e.g. `foo/`) is treated as recursive: `foo/**`.
@@ -92,7 +96,7 @@ If a _line_ in your file content starts with the marker prefix (after optional s
 
 Create an `.aggrignore` with `.gitignore`-style patterns:
 
-```
+```gitignore
 # Ignore logs and build artifacts
 *.log
 build/
@@ -130,11 +134,9 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 <summary><strong>pack</strong> — Aggregate files into an archive</summary>
 
 - **Usage:**
-
   - `aggr pack [patterns|paths...]`
 
 - **Aliases:**
-
   - `p`
 
 - **Flags:**
@@ -154,15 +156,12 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 <summary><strong>unpack</strong> — Extract files from an archive</summary>
 
 - **Usage:**
-
   - `aggr unpack <file>`
 
 - **Aliases:**
-
   - `u`, `x`
 
 - **Flags:**
-
   - `--output`, `-o` – Output directory. Default: `aggr-<hash-of-archive>` in the current directory.
   - `--ignore`, `-i` – Ignore patterns applied _during extraction_.
   - `--ext`, `-x` – Only extract files with these extensions (repeatable).
@@ -174,7 +173,11 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 
 ## Peculiarities & gotchas
 
-- **No absolute paths, no `..`:** For safety, any absolute path or pattern containing a `..` segment is rejected. Use `-C` if you need to work elsewhere.
-- **Pattern normalization is opinionated:** `.` becomes `**`, and a plain directory becomes recursive. If you want exact matching behavior, use explicit globs.
-- **Markers only escape at line start:** Only lines that _start_ with the marker (after spaces/tabs) get escaped. Text in the middle of a line is left as-is.
-- **Binary detection is conservative:** Files that look binary are skipped. If you need to force-include something unusual, use `--binary/-b` to disable the check.
+- **No absolute paths, no `..`:** For safety, any absolute path or pattern containing a `..` segment is rejected.
+  Use `-C` if you need to work elsewhere.
+- **Pattern normalization is opinionated:** `.` becomes `**`, and a plain directory becomes recursive.
+  If you want exact matching behavior, use explicit globs.
+- **Markers only escape at line start:** Only lines that _start_ with the marker (after spaces/tabs) get escaped.
+  Text in the middle of a line is left as-is.
+- **Binary detection is conservative:** Files that look binary are skipped.
+  If you need to force-include something unusual, use `--binary/-b` to disable the check.

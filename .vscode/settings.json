@@ -49,7 +49,7 @@
     "go.lintOnSave": "workspace",
     "go.lintTool": "golangci-lint",
     "go.lintFlags": [
-        "--config=.devenv/settings/.golangci.yml",
+        "--config=${workspaceFolder}/.golangci.yml",
         "--path-mode=abs"
     ],
     "go.formatTool": "custom",
