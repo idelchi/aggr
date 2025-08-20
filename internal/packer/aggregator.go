@@ -203,7 +203,7 @@ func (a *Aggregator) writeFooter(set files.Files, writer io.Writer) error {
 		return err
 	}
 
-	if _, err := io.WriteString(writer, tree.Generate(set).String()); err != nil {
+	if _, err := io.WriteString(writer, tree.Generate(set, a.Dry).String()); err != nil {
 		return err
 	}
 

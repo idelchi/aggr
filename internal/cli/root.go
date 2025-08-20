@@ -34,10 +34,10 @@ func Execute(version string) error {
 		`),
 		Example: heredoc.Doc(`
 			# Pack all files in the current directory and all subdirectories
-			$ aggr -o pack.aggr
+			aggr -o pack.aggr
 
 			# Unpack the contents of the archive
-			$ aggr -u -o __extracted__ pack.aggr
+			aggr -u -o __extracted__ pack.aggr
 		`),
 		Version:       version,
 		SilenceErrors: true,
@@ -83,7 +83,7 @@ func Execute(version string) error {
 	// Core operation
 	root.Flags().BoolVarP(&configuration.Unpack, "unpack", "u", false, "Unpack from a packed file")
 	root.Flags().StringVarP(&configuration.Output, "output", "o", "pack.aggr",
-		"Specify output file/folder. For --unpack, defaults to '$(pwd)/aggr-[hash of <file>]")
+		"Specify output file/folder. For --unpack, defaults to './aggr-[hash of <file>]")
 
 	// What to include/exclude
 	root.Flags().StringVarP(&configuration.Rules.Root, "root", "C", ".", "Root directory to use")
