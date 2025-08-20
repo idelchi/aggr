@@ -1,12 +1,22 @@
 package cli
 
 import (
+	"context"
+	"fmt"
+	"io"
+
 	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/charmbracelet/fang"
 	"github.com/spf13/cobra"
+
+	"gitlab.garfield-labs.com/apps/aggr/internal/config"
+	"gitlab.garfield-labs.com/apps/aggr/internal/packer"
 )
 
 // Execute runs the root command for the aggr CLI application.
 func Execute(version string) error {
+	var configuration config.Options
+
 	root := &cobra.Command{
 		Use:   "aggr",
 		Short: "Aggregate and unpack files",
@@ -14,19 +24,52 @@ func Execute(version string) error {
 			aggr is a command-line utility that recursively aggregates files
 			from specified paths into a single file and unpacks them back to their
 			original directory structure.
+
+			Walks through the provided paths/patterns (or the current directory if none are given)
+			and concatenates all found files into a single output.
+
+			In '--unpack' mode, reads an aggregated file and recreates the original files and directories.
+			The command extracts all files from the archive and restores them to their
+			original relative paths within the specified output directory.
 		`),
 		Example: heredoc.Doc(`
 			# Pack all files in the current directory and all subdirectories
-			$ aggr pack -o output.aggr
+			$ aggr -o pack.aggr
 
 			# Unpack the contents of the archive
-			$ aggr unpack output.aggr -o ./extracted
+			$ aggr -u -o __extracted__ pack.aggr
 		`),
 		Version:       version,
 		SilenceErrors: true,
-		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-			// Do not print usage after basic validation has been done.
-			cmd.SilenceUsage = true
+		SilenceUsage:  true,
+		Args: func(cmd *cobra.Command, args []string) error {
+			if configuration.Unpack {
+				if err := cobra.ExactArgs(1)(cmd, args); err != nil {
+					return fmt.Errorf(
+						"when unpacking, exactly one file argument is required, received %d arguments: %v",
+						len(args),
+						args,
+					)
+				}
+			}
+
+			return nil
+		},
+		RunE: func(_ *cobra.Command, args []string) error {
+			packer := packer.Packer{
+				Options: configuration,
+			}
+
+			if configuration.Unpack {
+				return packer.Unpack(args)
+			}
+
+			// Default to current directory if no args provided
+			if len(args) == 0 {
+				args = []string{config.DefaultPattern}
+			}
+
+			return packer.Pack(args)
 		},
 	}
 
@@ -37,14 +80,38 @@ func Execute(version string) error {
 	root.CompletionOptions.DisableDefaultCmd = true
 	cobra.EnableCommandSorting = false
 
-	root.AddCommand(
-		Pack(),
-		Unpack(),
-	)
+	// Core operation
+	root.Flags().BoolVarP(&configuration.Unpack, "unpack", "u", false, "Unpack from a packed file")
+	root.Flags().StringVarP(&configuration.Output, "output", "o", "pack.aggr",
+		"Specify output file/folder. For --unpack, defaults to '$(pwd)/aggr-[hash of <file>]")
 
-	if err := root.Execute(); err != nil {
-		return err //nolint:wrapcheck	// Error does not need additional wrapping.
+	// What to include/exclude
+	root.Flags().StringVarP(&configuration.Rules.Root, "root", "C", ".", "Root directory to use")
+	root.Flags().
+		StringSliceVarP(&configuration.Rules.Extensions, "extensions", "x", []string{}, "File extensions to include")
+	root.Flags().
+		StringSliceVarP(&configuration.Rules.Patterns, "ignore", "i", []string{}, "Additional .aggignore patterns")
+	root.Flags().BoolVarP(&configuration.Rules.Hidden, "hidden", "a", false, "Include hidden files and directories")
+	root.Flags().BoolVarP(&configuration.Rules.Binary, "binary", "b", false, "Include binary files")
+
+	// Limits
+	root.Flags().StringVarP(&configuration.Rules.Size, "size", "s", config.DefaultMaxSize,
+		"Max file size to include (e.g., `500kb`, `1mb`)")
+	root.Flags().
+		IntVarP(&configuration.Rules.Max, "max", "m", config.DefaultMaxFiles, "Maximum number of files to include")
+
+	// Behavior
+	root.Flags().
+		BoolVarP(&configuration.DryRun, "dry-run", "d", false, "Show which files would be processed without reading contents")
+	root.Flags().IntVarP(&configuration.Parallel, "parallel", "j", 1, "Number of parallel workers to use")
+
+	options := []fang.Option{
+		fang.WithVersion(version),
+		fang.WithoutManpage(),
+		fang.WithoutCompletions(),
+		fang.WithErrorHandler(func(_ io.Writer, _ fang.Styles, _ error) {}),
 	}
 
-	return nil
+	//nolint:wrapcheck	// Error does not need additional wrapping.
+	return fang.Execute(context.Background(), root, options...)
 }

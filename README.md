@@ -30,23 +30,23 @@ curl -sSL https://raw.githubusercontent.com/idelchi/aggr/refs/heads/main/install
 ## Usage
 
 ```sh
-# Pack the current directory (excluding ignored files) into stdout
-aggr pack
+# Pack the current directory (excluding ignored files) into `pack.aggr`
+aggr
 ```
 
 ```sh
 # Pack specific paths
-aggr pack src/ docs/
+aggr src/ docs/
 ```
 
 ```sh
 # Pack using glob patterns
-aggr pack '**/folder/**/*.go'
+aggr '**/folder/**/*.go'
 ```
 
 ```sh
 # Unpack an archive to a specific directory
-aggr unpack -o extracted/ pack.aggr
+aggr --unpack -o __extracted__ pack.aggr
 ```
 
 ## Format
@@ -106,7 +106,7 @@ dist/
 You can also provide additional ignore patterns via CLI:
 
 ```sh
-aggr pack -i "*.tmp" -i "node_modules/"
+aggr -i "*.tmp" -i "node_modules/"
 ```
 
 **Defaults** (always applied unless you override with your own patterns):
@@ -123,61 +123,32 @@ You can use `-x/--extensions` to "invert" selection by extension, e.g.:
 
 ```sh
 # Only include .go and .md (plus anything force-included by your own patterns)
-aggr pack -x go -x md
+aggr -x go -x md
 ```
 
 This is implemented as an "allow-list" layer using ignore patterns under the hood.
 
-## Commands and Flags
+### Flags
 
-<details>
-<summary><strong>pack</strong> — Aggregate files into an archive</summary>
+- `--unpack`, `-u` – Unpack from a packed file
+- `--output`, `-o` – Specify output file/folder. For --unpack, defaults to '$(pwd)/aggr-[hash of <file>]'
+- `--root`, `-C` – Root directory to use
+- `--extensions`, `-x` – File extensions to include (repeatable)
+- `--ignore`, `-i` – Additional .aggignore patterns (repeatable)
+- `--hidden`, `-a` – Include hidden files and directories
+- `--binary`, `-b` – Include binary files
+- `--size`, `-s` – Maximum size of file to include
+- `--max`, `-m` – Maximum number of files to include
+- `--dry-run`, `-d` – Show which files would be processed without reading contents
+- `--parallel`, `-j` – Number of parallel workers to use
 
-- **Usage:**
-  - `aggr pack [patterns|paths...]`
-
-- **Aliases:**
-  - `p`
-
-- **Flags:**
-  - `--output`, `-o` – Output file (default: stdout).
-  - `--ignore`, `-i` – Additional ignore pattern (repeatable).
-  - `--size`, `-s` – Max file size to include (e.g., `500kb`, `1mb`). Default: `1mb`.
-  - `--max`, `-m` – Max number of files to include. Default: `1000`.
-  - `--hidden`, `-a` – Include hidden files and directories.
-  - `--extensions`, `-x` – Only include listed file extensions (repeatable).
-  - `--root`, `-C` – Set the root directory for matching and reading files.
-  - `--binary`, `-b` – Include binary files.
-  - `--dry-run`, `-d` – Show what would be packed without writing output.
-
-</details>
-
-<details>
-<summary><strong>unpack</strong> — Extract files from an archive</summary>
-
-- **Usage:**
-  - `aggr unpack <file>`
-
-- **Aliases:**
-  - `u`, `x`
-
-- **Flags:**
-  - `--output`, `-o` – Output directory. Default: `aggr-<hash-of-archive>` in the current directory.
-  - `--ignore`, `-i` – Ignore patterns applied _during extraction_.
-  - `--ext`, `-x` – Only extract files with these extensions (repeatable).
-  - `--dry` – Show what would be unpacked without writing files.
-
-- **Note:** If the output directory already exists, you'll be prompted to confirm before potentially overwriting files.
-
-</details>
+**Note:** If the output directory already exists, you'll be prompted to confirm before potentially overwriting files.
 
 ## Peculiarities & gotchas
 
-- **No absolute paths, no `..`:** For safety, any absolute path or pattern containing a `..` segment is rejected.
+- **No absolute paths, no `..`:** Any absolute path or pattern containing a `..` segment is rejected.
   Use `-C` if you need to work elsewhere.
 - **Pattern normalization is opinionated:** `.` becomes `**`, and a plain directory becomes recursive.
   If you want exact matching behavior, use explicit globs.
-- **Markers only escape at line start:** Only lines that _start_ with the marker (after spaces/tabs) get escaped.
-  Text in the middle of a line is left as-is.
 - **Binary detection is conservative:** Files that look binary are skipped.
   If you need to force-include something unusual, use `--binary/-b` to disable the check.

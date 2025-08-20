@@ -54,6 +54,8 @@ type Walker struct {
 
 // Walk traverses the file system using the given pattern and returns all regular files
 // that pass the configured checkers. It stops and returns an error if the maximum file limit is reached.
+//
+// TODO(Idelchi): Write tests where fsys is mocked by fstest.MapFS{}.
 func (w *Walker) Walk(fsys fs.FS, pattern string, opts ...doublestar.GlobOption) error {
 	err := doublestar.GlobWalk(
 		fsys, pattern,

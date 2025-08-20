@@ -30,9 +30,7 @@ type Packer struct {
 // result to the configured output destination.
 //
 //nolint:gocognit,funlen	// TODO(Idelchi): Refactor this function to reduce complexity.
-func (p Packer) Pack() error {
-	searchPatterns := p.Options.Search
-
+func (p Packer) Pack(searchPatterns []string) error {
 	log, err := Logger(p.Options.DryRun)
 	if err != nil {
 		return err
@@ -218,8 +216,8 @@ func PromptForFolderExists(folder folder.Folder) bool {
 // Unpack extracts files from an aggregated file and recreates the original directory structure.
 // It reads the packed file from the given path and writes the extracted files to the
 // configured output directory.
-func (p Packer) Unpack() error {
-	path := p.Options.Search[0] // Expecting a single file path for unpacking
+func (p Packer) Unpack(packs []string) error {
+	path := packs[0] // Expecting a single file path for unpacking
 
 	log, err := Logger(p.Options.DryRun)
 	if err != nil {
