@@ -212,11 +212,11 @@ func TestGitIgnore(t *testing.T) {
 		},
 		{
 			Group:        "middle-slash",
-			Description:  "pattern with middle slash matches in subdirectory",
+			Description:  "pattern with middle slash does NOT match in subdirectory (Git anchoring)",
 			Patterns:     []string{"doc/frotz"},
 			Path:         "a/doc/frotz",
 			IsDir:        false,
-			ShouldIgnore: true,
+			ShouldIgnore: false,
 		},
 		{
 			Group:        "middle-slash",
@@ -925,11 +925,11 @@ func TestGitIgnore(t *testing.T) {
 		// Test to verify the special case code for foo/* is unnecessary
 		{
 			Group:        "foo-star-special-case",
-			Description:  "foo/* at nested level should work without special code",
+			Description:  "foo/* should NOT match at nested level (Git anchoring)",
 			Patterns:     []string{"foo/*"},
 			Path:         "deep/nested/foo/bar",
 			IsDir:        false,
-			ShouldIgnore: true, // This should work even without the special case code
+			ShouldIgnore: false, // Git anchoring: foo/* only matches at root level
 		},
 		{
 			Group:        "foo-star-special-case",
@@ -1073,12 +1073,12 @@ func TestGitIgnore(t *testing.T) {
 			ShouldIgnore: false,
 		},
 		{
-			Group:        "negated-dir-does-not-include-files",
-			Description:  "!/build/ should not un-ignore files inside without explicit file rules",
+			Group:        "negated-dir-does-not-include-files", 
+			Description:  "!/build/ un-ignores directory and files inside (Git behavior)",
 			Patterns:     []string{"/*", "!/build/"},
 			Path:         "build/file.txt",
 			IsDir:        false,
-			ShouldIgnore: true,
+			ShouldIgnore: false, // Git actually allows this file
 		},
 		{
 			Group:        "parent-exclusion-wildcard",
@@ -1102,6 +1102,204 @@ func TestGitIgnore(t *testing.T) {
 			Patterns:     []string{"foo*/", "!foobar/baz/"},
 			Path:         "foobar/baz",
 			IsDir:        true,
+			ShouldIgnore: true,
+		},
+
+		// Anchoring tests (verify correct Git behavior)
+		{
+			Group:        "anchoring",
+			Description:  "doc/frotz should match only at repo root",
+			Patterns:     []string{"doc/frotz"},
+			Path:         "doc/frotz",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+		{
+			Group:        "anchoring",
+			Description:  "doc/frotz must NOT match in subdir",
+			Patterns:     []string{"doc/frotz"},
+			Path:         "a/doc/frotz",
+			IsDir:        false,
+			ShouldIgnore: false,
+		},
+		{
+			Group:        "anchoring",
+			Description:  "foo/bar should match only at repo root",
+			Patterns:     []string{"foo/bar"},
+			Path:         "foo/bar",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+		{
+			Group:        "anchoring",
+			Description:  "foo/bar must NOT match at deeper levels",
+			Patterns:     []string{"foo/bar"},
+			Path:         "x/y/foo/bar",
+			IsDir:        false,
+			ShouldIgnore: false,
+		},
+		{
+			Group:        "anchoring",
+			Description:  "to match at any depth, use **/ prefix",
+			Patterns:     []string{"**/doc/frotz"},
+			Path:         "a/doc/frotz",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+
+		// Fixed /* pattern tests
+		{
+			Group:        "anchored-star",
+			Description:  "/* should ignore top-level dir 'folder' itself",
+			Patterns:     []string{"/*"},
+			Path:         "folder",
+			IsDir:        true,
+			ShouldIgnore: true,
+		},
+		{
+			Group:        "anchored-star",
+			Description:  "/* must NOT ignore nested files by itself",
+			Patterns:     []string{"/*"},
+			Path:         "folder/nested.txt",
+			IsDir:        false,
+			ShouldIgnore: false,
+		},
+		{
+			Group:        "anchored-star",
+			Description:  "/* should ignore top-level file",
+			Patterns:     []string{"/*"},
+			Path:         "top.txt",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+
+		// Parent exclusion edge cases
+		{
+			Group:        "parent-exclusion-edges",
+			Description:  "negating dir alone doesn't re-include files inside",
+			Patterns:     []string{"build/", "!build/"},
+			Path:         "build/file.txt",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+		{
+			Group:        "parent-exclusion-edges",
+			Description:  "non-slash parent exclusion blocks deep re-inclusion",
+			Patterns:     []string{"tmp*", "!tmpcache/keep.txt"},
+			Path:         "tmpcache/keep.txt",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+
+		// Dir-only vs non-dirs
+		{
+			Group:        "dironly-symlink-guard",
+			Description:  "dir-only pattern shouldn't match non-dirs",
+			Patterns:     []string{"symlinked-dir/"},
+			Path:         "symlinked-dir",
+			IsDir:        false, // simulate non-directory (e.g., symlink)
+			ShouldIgnore: false,
+		},
+
+		// Leading space comments
+		{
+			Group:        "leading-space-comment",
+			Description:  "leading spaces before # => literal pattern, not comment",
+			Patterns:     []string{"  #notacomment"},
+			Path:         "  #notacomment",
+			IsDir:        false,
+			ShouldIgnore: true,   // matches the literal "  #notacomment"
+		},
+		{
+			Group:        "leading-space-comment",
+			Description:  "escaped # should match literal",
+			Patterns:     []string{`\#hashtag`},
+			Path:         "#hashtag",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+
+		// Escape sequence tests
+		{
+			Group:        "escape-sequences",
+			Description:  "literal backslash",
+			Patterns:     []string{"file\\\\"},
+			Path:         "file\\",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+		{
+			Group:        "escape-sequences",
+			Description:  "escaped wildcard * should be literal",
+			Patterns:     []string{"\\*.txt"},
+			Path:         "*.txt",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+		{
+			Group:        "escape-sequences",
+			Description:  "escaped wildcard ? should be literal",
+			Patterns:     []string{"file\\?.txt"},
+			Path:         "file?.txt",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+		{
+			Group:        "escape-sequences",
+			Description:  "escaped bracket should be literal",
+			Patterns:     []string{"\\[test\\]"},
+			Path:         "[test]",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+		{
+			Group:        "escape-sequences",
+			Description:  "escaped wildcard should NOT match as wildcard",
+			Patterns:     []string{"\\*.txt"},
+			Path:         "file.txt",
+			IsDir:        false,
+			ShouldIgnore: false,
+		},
+		{
+			Group:        "escape-sequences",
+			Description:  "escaped ? should NOT match as wildcard",
+			Patterns:     []string{"file\\?.txt"},
+			Path:         "filea.txt",
+			IsDir:        false,
+			ShouldIgnore: false,
+		},
+		{
+			Group:        "escape-sequences",
+			Description:  "escaped bracket should NOT match as range",
+			Patterns:     []string{"\\[test\\]"},
+			Path:         "atest]",
+			IsDir:        false,
+			ShouldIgnore: false,
+		},
+
+		// Trailing space escape tests
+		{
+			Group:        "trailing-spaces",
+			Description:  "single escaped trailing space",
+			Patterns:     []string{"file\\ "},
+			Path:         "file ",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+		{
+			Group:        "trailing-spaces",
+			Description:  "multiple escaped trailing spaces",
+			Patterns:     []string{"file\\ \\ "},
+			Path:         "file  ",
+			IsDir:        false,
+			ShouldIgnore: true,
+		},
+		{
+			Group:        "trailing-spaces",
+			Description:  "mixed escaped and unescaped trailing spaces",
+			Patterns:     []string{"file\\ \\  "},
+			Path:         "file  ",
+			IsDir:        false,
 			ShouldIgnore: true,
 		},
 	}
