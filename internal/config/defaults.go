@@ -1,6 +1,6 @@
 package config
 
-import "gitlab.garfield-labs.com/apps/aggr/internal/patterns"
+import "github.com/idelchi/aggr/internal/patterns"
 
 // Application constants.
 const (

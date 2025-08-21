@@ -19,8 +19,8 @@ import (
 	"github.com/idelchi/godyl/pkg/path/file"
 	"github.com/idelchi/godyl/pkg/path/files"
 
-	"gitlab.garfield-labs.com/apps/aggr/internal/checkers"
-	"gitlab.garfield-labs.com/apps/aggr/internal/tree"
+	"github.com/idelchi/aggr/internal/checkers"
+	"github.com/idelchi/aggr/internal/tree"
 )
 
 // Prefixes defines the markers and tokens used in the packed stream format.
@@ -113,7 +113,7 @@ func (a *Aggregator) Unpack(reader file.File, dst string, chk checkers.Checkers)
 	var sink filesSink
 
 	errGroup, ctx := errgroup.WithContext(context.Background())
-	errGroup.SetLimit(a.Parallel)
+	errGroup.SetLimit(a.Parallel + 1)
 
 	const channelBufferFactor = 2
 
@@ -133,15 +133,11 @@ func (a *Aggregator) Unpack(reader file.File, dst string, chk checkers.Checkers)
 	}
 
 	// Parser goroutine.
-	if err := a.parseStream(ctx, reader, chunks); err != nil {
-		close(chunks)
+	errGroup.Go(func() error {
+		defer close(chunks)
 
-		_ = errGroup.Wait()
-
-		return nil, err
-	}
-
-	close(chunks)
+		return a.parseStream(ctx, reader, chunks)
+	})
 
 	if err := errGroup.Wait(); err != nil {
 		return nil, err
@@ -207,7 +203,7 @@ func (a *Aggregator) writeFooter(set files.Files, writer io.Writer) error {
 		return err
 	}
 
-	if _, err := io.WriteString(writer, tree.Generate(set).String()); err != nil {
+	if _, err := io.WriteString(writer, tree.Generate(set, a.Dry).String()); err != nil {
 		return err
 	}
 

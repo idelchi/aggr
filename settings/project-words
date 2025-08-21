@@ -9,6 +9,7 @@ aggignore
 aggr
 aggrignore
 bmatcuk
+charmbracelet
 debugf
 doublestar
 errgroup

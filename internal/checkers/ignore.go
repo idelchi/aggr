@@ -40,9 +40,20 @@ func (i *Ignore) check(path string) error {
 		matchPath = strings.TrimPrefix(matchPath, "../")
 	}
 
-	if ok, pattern := i.ignore.MatchesPathHow(matchPath); ok {
-		return fmt.Errorf("%w: in ignore patterns %q", ErrSkip, pattern.Pattern)
+	isDir := file.New(path).IsDir()
+	if isDir {
+		matchPath = strings.TrimRight(matchPath, "/") + "/"
 	}
 
-	return nil // not a file to ignore, continue processing
+	if ok, pattern := i.ignore.MatchesPathHow(matchPath); ok {
+		if isDir {
+			return fmt.Errorf("%w: dir in ignore patterns %q", ErrPrune, pattern.Pattern)
+		}
+
+		return fmt.Errorf("%w: file in ignore patterns %q", ErrSkip, pattern.Pattern)
+	}
+
+	fmt.Printf("  - %q: not in ignore patterns\n", path)
+
+	return nil
 }

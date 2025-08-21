@@ -2,8 +2,6 @@ package config
 
 // Options holds the configuration settings for the aggregation tool.
 type Options struct {
-	// Search specifies the search patterns for file aggregation.
-	Search []string
 	// Output specifies the output file path for aggregated data.
 	Output string
 	// DryRun indicates whether to perform a dry run without writing output.
@@ -12,6 +10,8 @@ type Options struct {
 	Parallel int
 	// Rules contains the file filtering and processing rules.
 	Rules Rules
+	// Unpack specifies whether to unpack.
+	Unpack bool
 }
 
 // Rules defines the filtering and processing rules for file aggregation.
