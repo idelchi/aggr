@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/idelchi/aggr/internal/gitignore"
+	gitignore "github.com/idelchi/go-gitignore"
 	"github.com/idelchi/godyl/pkg/path/file"
 )
 

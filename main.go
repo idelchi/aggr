@@ -11,7 +11,6 @@ import (
 	"os"
 
 	"github.com/idelchi/aggr/internal/cli"
-	"github.com/idelchi/aggr/internal/gitignore"
 )
 
 // version is the application version injected at build time.
@@ -25,31 +24,6 @@ type Files []File
 
 // main is the entry point of the application.
 func main() {
-	patterns := []string{
-		"*",
-		"!*/",
-		"!*.go",
-	}
-
-	ignorer := gitignore.New(patterns)
-
-	paths := []string{"a.go", "internal/config/file/a.go"}
-	isDir := false
-
-	fmt.Printf("Patterns: %v\n", patterns)
-	fmt.Printf("Paths: %q\n", paths)
-
-	for _, path := range paths {
-		ok := ignorer.IsIgnored(path, isDir)
-		if ok {
-			fmt.Printf("%q is ignored\n", path)
-		} else {
-			fmt.Printf("%q is not ignored\n", path)
-		}
-	}
-
-	// os.Exit(0)
-
 	if err := cli.Execute(version); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)

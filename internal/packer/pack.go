@@ -10,9 +10,9 @@ import (
 
 	"github.com/idelchi/aggr/internal/checkers"
 	"github.com/idelchi/aggr/internal/config"
-	"github.com/idelchi/aggr/internal/gitignore"
 	"github.com/idelchi/aggr/internal/patterns"
 	"github.com/idelchi/aggr/internal/walker"
+	gitignore "github.com/idelchi/go-gitignore"
 	"github.com/idelchi/godyl/pkg/path/file"
 	"github.com/idelchi/godyl/pkg/pretty"
 )

@@ -1,6 +1,6 @@
 module github.com/idelchi/aggr
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
@@ -24,6 +24,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
 	github.com/goccy/go-yaml v1.17.1 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/idelchi/go-gitignore v0.0.0-20250822102744-bdd78b81a6cf // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
