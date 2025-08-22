@@ -5,14 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 
+	"github.com/idelchi/aggr/internal/checkers"
 	"github.com/idelchi/godyl/pkg/path/file"
 	"github.com/idelchi/godyl/pkg/path/files"
-
-	"gitlab.garfield-labs.com/apps/aggr/internal/checkers"
 )
 
 // Logger is an interface for logging formatted debug messages.
@@ -67,15 +65,18 @@ func (w *Walker) Walk(fsys fs.FS, pattern string, opts ...doublestar.GlobOption)
 			fullPath := file.New(p)
 
 			if err := w.Checkers.Check(fullPath.Path()); err != nil {
-				if !strings.Contains(fullPath.Path(), ".git") {
-					w.Logger.Debugf("  - %q: %v", fullPath, err)
-				}
+				// if !strings.Contains(fullPath.Path(), ".git") {
+				w.Logger.Debugf("  - %q: %v", fullPath, err)
+				// }
 
-				if errors.Is(err, checkers.ErrAbort) {
+				switch {
+				case errors.Is(err, checkers.ErrAbort):
 					return fs.SkipAll
+				case errors.Is(err, checkers.ErrPrune):
+					return fs.SkipDir
+				default:
+					return nil // skip this file but keep walking siblings
 				}
-
-				return nil
 			}
 
 			if !dir.IsDir() {

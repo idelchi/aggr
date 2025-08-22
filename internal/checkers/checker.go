@@ -28,6 +28,8 @@ func (c Checkers) Check(path string) error {
 var (
 	// ErrSkip indicates that a file should be skipped.
 	ErrSkip = errors.New("skipping")
+	// ErrPrune indicates that a directory should be pruned.
+	ErrPrune = errors.New("pruning directory")
 	// ErrAbort indicates that the checking process should be aborted.
 	ErrAbort = errors.New("aborting")
 )

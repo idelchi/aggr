@@ -9,8 +9,8 @@ import (
 	"github.com/charmbracelet/fang"
 	"github.com/spf13/cobra"
 
-	"gitlab.garfield-labs.com/apps/aggr/internal/config"
-	"gitlab.garfield-labs.com/apps/aggr/internal/packer"
+	"github.com/idelchi/aggr/internal/config"
+	"github.com/idelchi/aggr/internal/packer"
 )
 
 // Execute runs the root command for the aggr CLI application.
@@ -18,7 +18,7 @@ func Execute(version string) error {
 	var configuration config.Options
 
 	root := &cobra.Command{
-		Use:   "aggr",
+		Use:   config.Name,
 		Short: "Aggregate and unpack files",
 		Long: heredoc.Doc(`
 			aggr is a command-line utility that recursively aggregates files
@@ -55,7 +55,9 @@ func Execute(version string) error {
 
 			return nil
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			configuration.Rules.IgnoreFile.Set = cmd.Flags().Lookup("ignore-file").Changed
+
 			packer := packer.Packer{
 				Options: configuration,
 			}
@@ -87,10 +89,12 @@ func Execute(version string) error {
 
 	// What to include/exclude
 	root.Flags().StringVarP(&configuration.Rules.Root, "root", "C", ".", "Root directory to use")
+	root.Flags().StringVarP(&configuration.Rules.IgnoreFile.Path, "ignore-file", "f", "",
+		"Path to the .aggrignore file. Set to an empty string to completely ignore. When not passed, uses defaults")
 	root.Flags().
 		StringSliceVarP(&configuration.Rules.Extensions, "extensions", "x", []string{}, "File extensions to include")
 	root.Flags().
-		StringSliceVarP(&configuration.Rules.Patterns, "ignore", "i", []string{}, "Additional .aggignore patterns")
+		StringSliceVarP(&configuration.Rules.Patterns, "ignore", "i", []string{}, "Additional .aggrignore patterns")
 	root.Flags().BoolVarP(&configuration.Rules.Hidden, "hidden", "a", false, "Include hidden files and directories")
 	root.Flags().BoolVarP(&configuration.Rules.Binary, "binary", "b", false, "Include binary files")
 

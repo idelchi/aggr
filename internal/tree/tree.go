@@ -13,9 +13,10 @@ import (
 // Generate creates a visual tree structure from a list of file paths.
 // It returns a treeprint.Tree that can be rendered as ASCII art showing
 // the hierarchical organization of the provided files.
-//
-//nolint:ireturn 	// Function should return interface.
-func Generate(fileList files.Files, enableNumberOfLines bool) treeprint.Tree {
+func Generate( //nolint:ireturn 	// Function should return interface.
+	fileList files.Files,
+	enableNumberOfLines bool,
+) treeprint.Tree {
 	root := treeprint.New()
 	branches := map[string]treeprint.Tree{
 		"": root, // key = joined path parts without leading slash

@@ -7,8 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	ignore "github.com/sabhiram/go-gitignore"
-
+	gitignore "github.com/idelchi/go-gitignore"
 	"github.com/idelchi/godyl/pkg/path/file"
 )
 
@@ -16,8 +15,8 @@ import (
 type Patterns []string
 
 // AsGitIgnore compiles the patterns into a GitIgnore matcher for efficient pattern matching.
-func (p Patterns) AsGitIgnore() *ignore.GitIgnore {
-	return ignore.CompileIgnoreLines(p...)
+func (p Patterns) AsGitIgnore() *gitignore.GitIgnore {
+	return gitignore.New(p)
 }
 
 // TrimEmpty removes empty and whitespace-only patterns from the collection.

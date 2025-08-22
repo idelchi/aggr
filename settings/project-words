@@ -5,9 +5,9 @@
 
 # cspell --config=.devenv/settings/cspell.yaml --words-only --unique "**/*.go" "**/*.py" "**/*.sh" | sort --ignore-case >> settings/project-words.txt
 
-aggignore
 aggr
 aggrignore
+aggrignores
 bmatcuk
 charmbracelet
 debugf
@@ -24,7 +24,6 @@ idelchi
 infof
 ireturn
 nolint
-sabhiram
 treeprint
 wrapcheck
 xlab

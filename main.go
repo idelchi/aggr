@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"os"
 
-	"gitlab.garfield-labs.com/apps/aggr/internal/cli"
+	"github.com/idelchi/aggr/internal/cli"
 )
 
 // version is the application version injected at build time.

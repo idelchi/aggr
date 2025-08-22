@@ -2,47 +2,36 @@ package checkers
 
 import (
 	"fmt"
-	"strings"
-
-	ignore "github.com/sabhiram/go-gitignore"
 
 	"github.com/idelchi/godyl/pkg/path/file"
 )
 
+// Ignorer is an interface for checking if a file or directory is ignored.
+type Ignorer interface {
+	IsIgnored(path string, isDir bool) bool
+}
+
 // Ignore is a checker that filters files based on gitignore-style patterns.
 type Ignore struct {
-	ignore *ignore.GitIgnore
+	ignore Ignorer
 }
 
 // NewIgnore creates a new Ignore checker with the provided GitIgnore matcher.
-func NewIgnore(ignore *ignore.GitIgnore) *Ignore {
+func NewIgnore(ignore Ignorer) *Ignore {
 	return &Ignore{ignore: ignore}
 }
 
 // Check returns an error if the file matches any of the configured ignore patterns.
 func (i *Ignore) Check(path string) error {
-	if err := i.check(path); err != nil {
-		return err
+	isDir := file.New(path).IsDir()
+
+	if ok := i.ignore.IsIgnored(path, isDir); ok {
+		if isDir {
+			return fmt.Errorf("%w: dir in ignore patterns", ErrPrune)
+		}
+
+		return fmt.Errorf("%w: file in ignore patterns", ErrSkip)
 	}
 
-	// // TODO(Idelchi): Do we really need this?
-	if file.New(path).IsDir() {
-		path = strings.TrimRight(path, "/") + "/"
-	}
-
-	return i.check(path)
-}
-
-// check checks if the given path matches any ignore patterns.
-func (i *Ignore) check(path string) error {
-	matchPath := path
-	for strings.HasPrefix(matchPath, "../") {
-		matchPath = strings.TrimPrefix(matchPath, "../")
-	}
-
-	if ok, pattern := i.ignore.MatchesPathHow(matchPath); ok {
-		return fmt.Errorf("%w: in ignore patterns %q", ErrSkip, pattern.Pattern)
-	}
-
-	return nil // not a file to ignore, continue processing
+	return nil
 }

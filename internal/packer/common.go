@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/idelchi/aggr/internal/config"
+	"github.com/idelchi/aggr/internal/patterns"
 	"github.com/idelchi/godyl/pkg/logger"
 	"github.com/idelchi/godyl/pkg/path/file"
 	"github.com/idelchi/godyl/pkg/path/files"
-
-	"gitlab.garfield-labs.com/apps/aggr/internal/config"
-	"gitlab.garfield-labs.com/apps/aggr/internal/patterns"
 )
 
 // Logger creates and returns a logger with the appropriate level based on dry run mode.
@@ -45,18 +44,23 @@ func GetOutputWriter(options config.Options) (*os.File, error) {
 	return file.OpenForWriting()
 }
 
-// ActiveAggrignore searches for and returns an active .aggrignore file.
-// It checks the current directory and user config directory for ignore files.
+// DefaultAggrignores searches for and returns the default .aggrignore file.
+// It checks the current directory and ~/.config/aggr for ignore files, finally
+// falling back to .gitignore in the current directory.
 // Returns the found file and true if an ignore file exists, otherwise false.
-func ActiveAggrignore() (file.File, bool) {
-	files := files.New(".", config.DefaultIgnoreFile)
+func DefaultAggrignores() file.File {
+	files := files.New(config.DefaultIgnoreFile)
 
-	configDir, err := os.UserConfigDir()
+	home, err := os.UserHomeDir()
 	if err == nil {
-		files = append(files, file.New(configDir, config.DefaultIgnoreFile))
+		files.AddFile(file.New(home, ".config", config.Name, config.DefaultIgnoreFile))
 	}
 
-	return files.Exists()
+	files.AddFile(file.New(".gitignore"))
+
+	file, _ := files.Exists()
+
+	return file
 }
 
 // ExtensionsToPatterns converts a list of file extensions to ignore patterns.

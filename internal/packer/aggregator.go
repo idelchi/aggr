@@ -15,12 +15,11 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/idelchi/aggr/internal/checkers"
+	"github.com/idelchi/aggr/internal/tree"
 	"github.com/idelchi/godyl/pkg/logger"
 	"github.com/idelchi/godyl/pkg/path/file"
 	"github.com/idelchi/godyl/pkg/path/files"
-
-	"gitlab.garfield-labs.com/apps/aggr/internal/checkers"
-	"gitlab.garfield-labs.com/apps/aggr/internal/tree"
 )
 
 // Prefixes defines the markers and tokens used in the packed stream format.

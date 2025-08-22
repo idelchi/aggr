@@ -18,7 +18,7 @@ unpacks them back to their original directory structure.
 - Pack multiple files and directories into a single text archive.
 - Unpack archives, restoring the original directory structure.
 - Filter files by size, extension, and path using glob + `.gitignore`-style patterns.
-- Supports a project `.aggrignore` (and a user-level one in your OS config dir).
+- Supports loading of a `.aggrignore` following `gitignore` conventions.
 - Skips binary files automatically and, by default, hidden files and common VCS/build dirs.
 
 ## Installation
@@ -131,16 +131,19 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 ### Flags
 
 - `--unpack`, `-u` – Unpack from a packed file
-- `--output`, `-o` – Specify output file/folder. For --unpack, defaults to '$(pwd)/aggr-[hash of <file>]'
+- `--output`, `-o` – Specify output file/folder. For --unpack, defaults to `$(pwd)/aggr-[hash of <file>]`
 - `--root`, `-C` – Root directory to use
+- `--file`, `-f` - Path to the `.aggrignore` file. Set to an empty string to completely ignore. When not passed, uses defaults.
 - `--extensions`, `-x` – File extensions to include (repeatable)
-- `--ignore`, `-i` – Additional .aggignore patterns (repeatable)
+- `--ignore`, `-i` – Additional .aggrignore patterns (repeatable)
 - `--hidden`, `-a` – Include hidden files and directories
 - `--binary`, `-b` – Include binary files
 - `--size`, `-s` – Maximum size of file to include
 - `--max`, `-m` – Maximum number of files to include
 - `--dry-run`, `-d` – Show which files would be processed without reading contents
 - `--parallel`, `-j` – Number of parallel workers to use
+
+When `--file` is not set, it defaults to the first found of `.aggrignore`, `~/.config/aggr/.aggrignore` and `.gitignore`.
 
 **Note:** If the output directory already exists, you'll be prompted to confirm before potentially overwriting files.
 
@@ -149,6 +152,6 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 - **No absolute paths, no `..`:** Any absolute path or pattern containing a `..` segment is rejected.
   Use `-C` if you need to work elsewhere.
 - **Pattern normalization is opinionated:** `.` becomes `**`, and a plain directory becomes recursive.
-  If you want exact matching behavior, use explicit globs.
+  If you want exact matching behaviour, use explicit globs.
 - **Binary detection is conservative:** Files that look binary are skipped.
   If you need to force-include something unusual, use `--binary/-b` to disable the check.
