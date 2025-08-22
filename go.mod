@@ -8,7 +8,7 @@ require (
 	github.com/charmbracelet/fang v0.3.0
 	github.com/denormal/go-gitignore v0.0.0-20180930084346-ae8ad1d07817
 	github.com/dustin/go-humanize v1.0.1
-	github.com/idelchi/godyl v0.0.21-beta.0.20250822073344-80a5efb4b7e0
+	github.com/idelchi/godyl v0.0.21-beta.0.20250822080932-2d98d91e5f70
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/spf13/cobra v1.9.1
 	github.com/xlab/treeprint v1.2.0

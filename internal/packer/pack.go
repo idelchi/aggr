@@ -113,8 +113,6 @@ func (p Packer) Pack(searchPatterns []string) error {
 		log.Debug("  - .aggignore: [none loaded]")
 	}
 
-	os.Exit(0)
-
 	log.Debugf("  - patterns passed on commandline: %v", p.Options.Rules.Patterns)
 
 	ignorePatterns = append(ignorePatterns, p.Options.Rules.Patterns...)

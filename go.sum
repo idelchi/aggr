@@ -97,6 +97,8 @@ github.com/idelchi/godyl v0.0.21-beta.0.20250820073012-9527bba480fd h1:po4r7QgrI
 github.com/idelchi/godyl v0.0.21-beta.0.20250820073012-9527bba480fd/go.mod h1:HJzvw0/HVLcchOc6B87camDUPZZsEKK4EN5N4a1JLPo=
 github.com/idelchi/godyl v0.0.21-beta.0.20250822073344-80a5efb4b7e0 h1:oVJApUaSdmf7lYDbbMbBd7sY8oyk1mgf4JUEayR+W94=
 github.com/idelchi/godyl v0.0.21-beta.0.20250822073344-80a5efb4b7e0/go.mod h1:HJzvw0/HVLcchOc6B87camDUPZZsEKK4EN5N4a1JLPo=
+github.com/idelchi/godyl v0.0.21-beta.0.20250822080932-2d98d91e5f70 h1:0eCWUM0RWZw378UWD+zSY9gbz8dof1LX74Z32BJTo2s=
+github.com/idelchi/godyl v0.0.21-beta.0.20250822080932-2d98d91e5f70/go.mod h1:HJzvw0/HVLcchOc6B87camDUPZZsEKK4EN5N4a1JLPo=
 github.com/idelchi/gogen v0.0.0-20250114054957-4978468f4054 h1:0ZXDt4CSBA3fdYV9614zveZ2lanIH1CywqnN6lkcn0U=
 github.com/idelchi/gogen v0.0.0-20250114054957-4978468f4054/go.mod h1:EspfFBd6Peomdp3eEHd2zrwPrlpO/vhubXztfr/6Uog=
 github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf h1:WfD7VjIE6z8dIvMsI4/s+1qr5EL+zoIGev1BQj1eoJ8=

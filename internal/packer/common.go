@@ -49,7 +49,6 @@ func GetOutputWriter(options config.Options) (*os.File, error) {
 // Returns the found file and true if an ignore file exists, otherwise false.
 func DefaultAggrignores() (file.File, bool) {
 	files := files.New(config.DefaultIgnoreFile)
-	fmt.Println(files)
 
 	home, err := os.UserHomeDir()
 	if err == nil {
@@ -57,10 +56,6 @@ func DefaultAggrignores() (file.File, bool) {
 	}
 
 	files.AddFile(file.New(".gitignore"))
-	fmt.Println(files)
-	fmt.Println(files.Exists())
-
-	os.Exit(0)
 
 	return files.Exists()
 }
