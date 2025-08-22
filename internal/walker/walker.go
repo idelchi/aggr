@@ -8,10 +8,9 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 
+	"github.com/idelchi/aggr/internal/checkers"
 	"github.com/idelchi/godyl/pkg/path/file"
 	"github.com/idelchi/godyl/pkg/path/files"
-
-	"github.com/idelchi/aggr/internal/checkers"
 )
 
 // Logger is an interface for logging formatted debug messages.

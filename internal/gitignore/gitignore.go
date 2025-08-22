@@ -152,6 +152,7 @@ func parsePattern(line string) *pattern {
 	}
 
 	p.pattern = line
+
 	return p
 }
 
@@ -188,6 +189,7 @@ func trimTrailingSpaces(s string) string {
 		if i > 0 && s[i-1] == '\\' {
 			// Count consecutive backslashes before this space
 			backslashCount := 0
+
 			for j := i - 1; j >= 0 && s[j] == '\\'; j-- {
 				backslashCount++
 			}
@@ -196,9 +198,11 @@ func trimTrailingSpaces(s string) string {
 				// This space is escaped, include it and the escape backslash
 				// The escape backslash will be removed later
 				end = i + 1
+
 				break
 			}
 		}
+
 		i--
 	}
 
@@ -279,9 +283,11 @@ func (g *GitIgnore) IsIgnored(path string, isDir bool) bool {
 
 	// Build list of all parent paths to check
 	var pathsToCheck []string
+
 	parts := strings.Split(path, "/")
 	for i := 1; i <= len(parts); i++ {
 		checkPath := strings.Join(parts[:i], "/")
+
 		pathsToCheck = append(pathsToCheck, checkPath)
 	}
 
@@ -298,6 +304,7 @@ func (g *GitIgnore) IsIgnored(path string, isDir bool) bool {
 			// The parent exclusion rule only applies when a directory is explicitly excluded,
 			// not when patterns like "foo/*" match content inside the directory
 			dirMatches := false
+
 			if p.dirOnly {
 				// Directory-only patterns (ending with /) explicitly exclude directories
 				dirMatches = matchesDirectoryPath(p, checkPath)
@@ -323,6 +330,7 @@ func (g *GitIgnore) IsIgnored(path string, isDir bool) bool {
 					} else {
 						// "*" pattern can exclude directories by matching their basename
 						basename := pathpkg.Base(checkPath)
+
 						dirMatches = matchGlob(p, basename)
 					}
 				} else if strings.Contains(p.pattern, "**") {
@@ -336,6 +344,7 @@ func (g *GitIgnore) IsIgnored(path string, isDir bool) bool {
 					// Pattern without slash - check if it matches directory basename
 					// e.g., "build" pattern excludes directory named "build"
 					basename := pathpkg.Base(checkPath)
+
 					dirMatches = matchGlob(p, basename)
 				}
 			}
@@ -359,11 +368,13 @@ func (g *GitIgnore) IsIgnored(path string, isDir bool) bool {
 	// Check if any parent directory is excluded (implements parent exclusion rule)
 	// This applies to both files AND directories
 	parentExcluded := false
+
 	if len(parts) > 1 { // Has parent directories
 		for i := 1; i < len(parts); i++ {
 			parentPath := strings.Join(parts[:i], "/")
 			if excludedDirs[parentPath] {
 				parentExcluded = true
+
 				break
 			}
 		}
@@ -418,7 +429,6 @@ func matchesDirectoryPattern(p pattern, path string, isDir bool) bool {
 	// - Negative patterns have special cases:
 	//   - Wildcard patterns like !*/ or !**/ only match directories
 	//   - Simple patterns like !build/ match directory and files for re-inclusion
-
 	if isDir {
 		// Check if this directory matches the pattern directly
 		if matchesDirectoryPath(p, path) {
@@ -502,6 +512,7 @@ func matchesFilePattern(p pattern, path string, isDir bool) bool {
 		}
 		// Unrooted * matches files/dirs without slashes at any depth
 		basename := pathpkg.Base(path)
+
 		return basename != "." && basename != "" // Don't match current dir or empty
 	}
 
@@ -530,6 +541,7 @@ func matchesFilePattern(p pattern, path string, isDir bool) bool {
 			parts := strings.Split(path, "/")
 			for i := 1; i < len(parts); i++ {
 				parentPath := strings.Join(parts[:i], "/")
+
 				parentBasename := pathpkg.Base(parentPath)
 				if matchGlob(p, parentBasename) {
 					return true
@@ -559,6 +571,7 @@ func matchGlob(p pattern, path string) bool {
 
 	// Use doublestar for glob matching - it handles both escaped and unescaped chars
 	matched, _ := doublestar.Match(pattern, path)
+
 	return matched
 }
 
@@ -572,9 +585,10 @@ func matchGlob(p pattern, path string) bool {
 // a brace is already escaped.
 func escapeBraces(pattern string) string {
 	var result []byte
+
 	inCharClass := false
 
-	for i := 0; i < len(pattern); i++ {
+	for i := range len(pattern) {
 		char := pattern[i]
 
 		// Track character class boundaries
@@ -589,6 +603,7 @@ func escapeBraces(pattern string) string {
 			// Check if this brace is already escaped
 			// Count preceding backslashes
 			backslashCount := 0
+
 			for j := i - 1; j >= 0 && pattern[j] == '\\'; j-- {
 				backslashCount++
 			}
@@ -598,8 +613,10 @@ func escapeBraces(pattern string) string {
 				result = append(result, '\\')
 			}
 		}
+
 		result = append(result, char)
 	}
+
 	return string(result)
 }
 
