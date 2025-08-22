@@ -133,9 +133,9 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 - `--unpack`, `-u` – Unpack from a packed file
 - `--output`, `-o` – Specify output file/folder. For --unpack, defaults to `$(pwd)/aggr-[hash of <file>]`
 - `--root`, `-C` – Root directory to use
-- `--file`, `-f` - Path to the `.aggignore` file. Set to an empty string to completely ignore. When not passed, uses defaults.
+- `--file`, `-f` - Path to the `.aggrignore` file. Set to an empty string to completely ignore. When not passed, uses defaults.
 - `--extensions`, `-x` – File extensions to include (repeatable)
-- `--ignore`, `-i` – Additional .aggignore patterns (repeatable)
+- `--ignore`, `-i` – Additional .aggrignore patterns (repeatable)
 - `--hidden`, `-a` – Include hidden files and directories
 - `--binary`, `-b` – Include binary files
 - `--size`, `-s` – Maximum size of file to include
@@ -143,7 +143,7 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 - `--dry-run`, `-d` – Show which files would be processed without reading contents
 - `--parallel`, `-j` – Number of parallel workers to use
 
-When `--file` is not set, it defaults to the first found of `.aggignore`, `~/.config/aggr/.aggignore` and `.gitignore`.
+When `--file` is not set, it defaults to the first found of `.aggrignore`, `~/.config/aggr/.aggrignore` and `.gitignore`.
 
 **Note:** If the output directory already exists, you'll be prompted to confirm before potentially overwriting files.
 

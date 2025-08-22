@@ -90,11 +90,11 @@ func Execute(version string) error {
 	// What to include/exclude
 	root.Flags().StringVarP(&configuration.Rules.Root, "root", "C", ".", "Root directory to use")
 	root.Flags().StringVarP(&configuration.Rules.IgnoreFile.Path, "ignore-file", "f", "",
-		"Path to the .aggignore file. Set to an empty string to completely ignore. When not passed, uses defaults")
+		"Path to the .aggrignore file. Set to an empty string to completely ignore. When not passed, uses defaults")
 	root.Flags().
 		StringSliceVarP(&configuration.Rules.Extensions, "extensions", "x", []string{}, "File extensions to include")
 	root.Flags().
-		StringSliceVarP(&configuration.Rules.Patterns, "ignore", "i", []string{}, "Additional .aggignore patterns")
+		StringSliceVarP(&configuration.Rules.Patterns, "ignore", "i", []string{}, "Additional .aggrignore patterns")
 	root.Flags().BoolVarP(&configuration.Rules.Hidden, "hidden", "a", false, "Include hidden files and directories")
 	root.Flags().BoolVarP(&configuration.Rules.Binary, "binary", "b", false, "Include binary files")
 

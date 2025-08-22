@@ -18,7 +18,7 @@ type Options struct {
 type Rules struct {
 	// Root defines the root directory for the aggregation operation.
 	Root string
-	// IgnoreFile specifies the path to the .aggignore file.
+	// IgnoreFile specifies the path to the .aggrignore file.
 	IgnoreFile IgnoreFile
 	// Patterns contains ignore patterns to apply when collecting files.
 	Patterns []string
@@ -34,9 +34,9 @@ type Rules struct {
 	Binary bool
 }
 
-// IgnoreFile represents a .aggignore file.
+// IgnoreFile represents a .aggrignore file.
 type IgnoreFile struct {
-	// Path is the file path to the .aggignore file.
+	// Path is the file path to the .aggrignore file.
 	Path string
 	// Set indicates whether the ignore file is set.
 	Set bool

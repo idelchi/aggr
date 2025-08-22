@@ -362,12 +362,8 @@ func matchesDirectoryPattern(pattern pattern, path string, isDir bool) bool {
 
 		// For positive patterns, also check if directory is inside a matching directory
 		if !pattern.negated {
-			parts := strings.Split(path, "/")
-			for i := 1; i < len(parts); i++ {
-				parentPath := strings.Join(parts[:i], "/")
-				if matchesDirectoryPath(pattern, parentPath) {
-					return true
-				}
+			if matchesParentDirectory(pattern, path) {
+				return true
 			}
 		}
 
@@ -383,6 +379,11 @@ func matchesDirectoryPattern(pattern pattern, path string, isDir bool) bool {
 	}
 
 	// For positive directory patterns, check if file is inside a matching directory
+	return matchesParentDirectory(pattern, path)
+}
+
+// matchesParentDirectory checks if a pattern matches any parent directory of a given path.
+func matchesParentDirectory(pattern pattern, path string) bool {
 	parts := strings.Split(path, "/")
 	for i := 1; i < len(parts); i++ {
 		parentPath := strings.Join(parts[:i], "/")

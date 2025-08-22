@@ -1,12 +1,70 @@
-Awesome — here’s a tight, actionable plan that fixes the real divergence I called out, plus a couple of tiny robustness/test gaps, **without** changing any behavior that’s already correct.
+Great catch on the `!build` behavior — with that clarified, here’s a focused, code-first plan to bring your implementation fully in line with Git and to “air-tight” the tests.
 
 ---
 
-# 1) Fix: negations that don’t “re-open” ignored directories
+# What actually deviates right now (and how to fix)
 
-## What’s wrong (confirmed)
+## 1) Patterns with a slash (e.g. `a/b/`) don’t match directories
 
-Given patterns like:
+**Symptom**
+Directory-only patterns that contain a slash (e.g. `a/b/`) won’t match the directory because `matchesDirectoryPath` returns `false` for non-rooted slash patterns. In Git, when the `.gitignore` is at repo root (your constraint), *any* pattern containing a slash is anchored to root and should be matched against the full path.
+
+**Fix (surgical change)**
+Update `matchesDirectoryPath` to treat **any** pattern containing `/` as anchored to the root (i.e., match the full directory path). Today it only considers `p.rooted`.
+
+```go
+// BEFORE (conceptual)
+func matchesDirectoryPath(p pattern, dirPath string) bool {
+    if p.rooted {
+        return matchGlob(p, dirPath)
+    }
+    if !strings.Contains(p.pattern, "/") {
+        return matchGlob(p, path.Base(dirPath))
+    }
+    // currently returns false here for non-rooted slash patterns
+    return false
+}
+
+// AFTER (drop the early return; anchor slash-patterns to root)
+func matchesDirectoryPath(p pattern, dirPath string) bool {
+    if p.rooted || strings.Contains(p.pattern, "/") {
+        // In our “single root .gitignore” world, slash ⇒ anchored to repo root
+        return matchGlob(p, dirPath)
+    }
+    // No slash ⇒ compare against the basename only
+    return matchGlob(p, path.Base(dirPath))
+}
+```
+
+**Why this matters**
+
+* Positive `a/b/` must ignore `a/b` (dir) and everything within.
+* Negated `!a/b/` must unignore that exact directory (subject to parent-exclusion semantics).
+* Your parent-exclusion prepass (`findExcludedParentDirectories`) already uses full-path matching for slash patterns; this change makes the second pass consistent.
+
+---
+
+## 2) Comment vs. behavior on negated dir patterns
+
+**Symptom**
+There’s a comment implying *“simple patterns like `!build/` match directory **and files** for re-inclusion”*. That’s misleading: `!build/` un-ignores the directory itself; it does **not** directly re-include files (those remain ignored unless another rule re-includes them, e.g. `!*.txt` or a path-specific negation).
+
+**Fix (doc only)**
+Adjust that comment in `matchesDirectoryPattern` to:
+
+> “`!build/` un-ignores the directory entry. It does not directly re-include child files; re-inclusion of files requires additional negations (e.g. `!*.txt` or `!build/file.txt`).”
+
+(No code change needed.)
+
+---
+
+## 3) Confirm: `!build` re-opens the directory (keep current logic)
+
+**Status**
+You already do the right thing in `findExcludedParentDirectories`: if a **negated** pattern matches the directory itself, you `delete(excludedDirs, checkPath)`. That correctly covers both `!build/` and `!build` (because non-slash patterns can match a directory’s basename). Don’t change this.
+
+**What to add**
+Lock this behavior down with tests (see below), including the exact case the user demonstrated:
 
 ```
 *
@@ -15,196 +73,231 @@ build
 !*.txt
 ```
 
-`build/file.txt` should still be ignored by Git. Reason: once a parent directory is excluded, patterns on its *contained files* have no effect **unless** that directory is explicitly re-opened for traversal (e.g., `!build/`, `!*/`, `!**/`, or a path-specific exception that includes the directory). This is straight from the spec: “It is not possible to re-include a file if a parent directory of that file is excluded… patterns on contained files have no effect.” ([Git][1])
-
-Your current implementation allows `!build` + `!*.txt` to “shine through” and include `build/file.txt`. That does not match Git’s behavior. The fix is to gate file-level negations behind an explicitly re-opened directory. ([Git][1])
-
-## How to implement (surgical changes)
-
-Keep your two-pass approach, but split the concept of “excluded parents” into **excluded** vs **reopened**:
-
-1. **Pass A — collect excluded directories**
-
-   * Build `excludedDirs` exactly as you do now when a directory is excluded by a positive pattern (e.g., `build/`, `build`, `/*`, etc.).
-   * This pass is unchanged, but be sure `*` (no slash) that matches a dir name *does* mark that dir excluded (as you already do).
-
-2. **Pass B — collect directories explicitly re-opened**
-   Build a new set/map, `reopenedDirs`, for negations that explicitly re-open directories for traversal. Only count as “re-opening” if the negation unambiguously targets directories:
-
-   * `!dir/` (trailing slash)
-   * `!*/` and `!**/`
-   * Path-specific negations ending with slash, e.g., `!foo/bar/`
-   * Optionally: a path-specific negation with a slash that points inside the dir, e.g., `!build/*.txt` (this does **not** open the whole dir, but it indicates that we must traverse into `build/` to evaluate that specific rule; see (4) below).
-
-3. **Traversal gate before applying file-level negations**
-   When evaluating a file path `p`, compute `hasClosedAncestor = any(ancestor ∈ excludedDirs and ancestor ∉ reopenedDirs)`.
-
-   * If `hasClosedAncestor` is true, **ignore any negation patterns that don’t explicitly mention that ancestor segment** (i.e., rules like `!*.txt` or `!something` without a slash), because Git won’t even list the contents of an excluded directory. ([Git][1])
-   * This immediately fixes the `* / build / !build / !*.txt` case: `!build` may make the directory itself visible, but generic `!*.txt` still won’t apply to files inside unless we have a directory-negation that re-opens traversal (e.g., `!build/`, `!*/`, or `!**/`).
-
-4. **Path-specific negations (with slashes)**
-   Negations like `!/build/file.txt` or `!build/*.txt` can force a traversal into that path; while evaluating such a negation, treat each ancestor segment on that *specific* path as temporarily “reopened” to reach the target (but do **not** globally add those dirs to `reopenedDirs`). This mirrors the practical effect users observe: you can re-include a specific file with a fully qualified negation, but you aren’t reopening the directory for everything else. (This respects the spec’s wording about excluded parents while allowing explicitly-addressed exceptions.) ([Git][1])
-
-> Specs that back this:
-> • Parent-excluded dirs stop rules on contained files (L21).
-> • Directory patterns with trailing `/` match the directory and paths underneath (L31).
-> • `foo/*` matches only one level (L32). ([Git][1])
-
-### Minimal code touchpoints
-
-* Keep `computeExcludedParentDirectories(...)` as is; add a sibling `computeReopenedDirectories(...)`.
-* Add `isUnderClosedAncestor(path) bool` that uses `excludedDirs` \ `reopenedDirs`.
-* When evaluating a **negation pattern**:
-
-  * If the pattern has **no slash**, and `isUnderClosedAncestor(path)` is true → ignore this negation.
-  * If the pattern **has a slash** (path-specific), allow a targeted traversal for that match attempt.
-* When evaluating a **directory path** itself:
-
-  * `!dir/` should mark the directory as not ignored; leave its children “closed” unless another rule opens them.
-  * `!*/` and `!**/` should open traversal for all directories.
+`build/file.txt` must be **not ignored**.
 
 ---
 
-## Tests to add (table-driven; all should pass under Git)
+# Tests to add (make parity airtight)
 
-Add these to your existing `gitignore_test.go` suite:
+> Keep your table-driven style; below are minimal cases with names you can reuse.
 
-### A. The failing case (flip the expectation)
+### A) Slash-containing directory patterns (the current gap)
+
+1. **Positive directory with mid slash**
 
 ```go
 {
-  Group: "negation-non-dir-parent",
-  Description: "* + build + !build + !*.txt keeps files in build/ ignored",
+  Group: "dir-pattern-mid-slash",
+  Description: "a/b/ ignores directory a/b",
+  Patterns: []string{"a/b/"},
+  Path: "a/b",
+  IsDir: true,
+  ShouldIgnore: true,
+}
+```
+
+2. **Children under that directory**
+
+```go
+{
+  Group: "dir-pattern-mid-slash",
+  Description: "a/b/ ignores a/b/c.txt under it",
+  Patterns: []string{"a/b/"},
+  Path: "a/b/c.txt",
+  IsDir: false,
+  ShouldIgnore: true,
+}
+```
+
+3. **File named like the dir should NOT match**
+
+```go
+{
+  Group: "dir-pattern-mid-slash",
+  Description: "a/b/ does not match a/b as a file",
+  Patterns: []string{"a/b/"},
+  Path: "a/b", // pretend file entry
+  IsDir: false,
+  ShouldIgnore: false,
+}
+```
+
+4. **Negated directory with mid slash (no parent excluded)**
+
+```go
+{
+  Group: "dir-pattern-mid-slash",
+  Description: "negated !a/b/ re-allows the directory itself",
+  Patterns: []string{"a/b/", "!a/b/"},
+  Path: "a/b",
+  IsDir: true,
+  ShouldIgnore: false,
+}
+```
+
+5. **Parent exclusion wins over deeper negation**
+
+```go
+{
+  Group: "dir-pattern-mid-slash-parent-excl",
+  Description: "a/ excluded; !a/b/ cannot re-include a/b",
+  Patterns: []string{"a/", "!a/b/"},
+  Path: "a/b",
+  IsDir: true,
+  ShouldIgnore: true, // cannot hop into excluded parent
+}
+```
+
+### B) `!build` re-opens directory, `!*.txt` re-includes files (the demo case)
+
+1. **As shown by the user**
+
+```go
+{
+  Group: "reopen-then-reinclude",
+  Description: "* build !build !*.txt => txt inside build is allowed",
   Patterns: []string{"*", "build", "!build", "!*.txt"},
-  Path: "build/file.txt", IsDir: false, ShouldIgnore: true, // change to true
+  Path: "build/file.txt",
+  IsDir: false,
+  ShouldIgnore: false,
 }
 ```
 
-Why: `*`/`build` exclude the parent; `!build` alone doesn’t open traversal for contained files; generic `!*.txt` can’t apply. ([Git][1])
-
-### B. Re-open directory explicitly with trailing slash
+2. **Control: no re-open ⇒ generic negation blocked**
 
 ```go
 {
-  Group: "reopen-dir",
-  Description: "build/ excluded, !build/ reopens, !*.txt applies",
+  Group: "reopen-then-reinclude",
+  Description: "* build !*.txt => still ignored because parent closed",
+  Patterns: []string{"*", "build", "!*.txt"},
+  Path: "build/file.txt",
+  IsDir: false,
+  ShouldIgnore: true,
+}
+```
+
+3. **Trailing-slash variant (explicit dir negation)**
+
+```go
+{
+  Group: "reopen-then-reinclude",
+  Description: "* build/ !build/ !*.txt => txt inside build allowed",
   Patterns: []string{"*", "build/", "!build/", "!*.txt"},
-  Path: "build/file.txt", IsDir: false, ShouldIgnore: false,
+  Path: "build/file.txt",
+  IsDir: false,
+  ShouldIgnore: false,
 }
 ```
 
-Matches the spec: directory pattern with `/` affects the directory and paths underneath (when re-opened). ([Git][1])
-
-### C. Re-open traversal globally with `!*/`
-
-```go
-{
-  Group: "reopen-all-dirs",
-  Description: "* then !*/ then !*.txt allows txt anywhere",
-  Patterns: []string{"*", "!*/", "!*.txt"},
-  Path: "x/y/z/note.txt", IsDir: false, ShouldIgnore: false,
-}
-```
-
-This is the common cookbook pattern users employ. ([Git][1])
-
-### D. Fully-qualified file exception
+4. **Path-specific file exception**
 
 ```go
 {
   Group: "qualified-exception",
-  Description: "build/ excluded; path-specific !build/file.txt re-includes only that file",
+  Description: "build/ then !build/file.txt re-includes only that file",
   Patterns: []string{"build/", "!build/file.txt"},
-  Path: "build/file.txt", IsDir: false, ShouldIgnore: false,
+  Path: "build/file.txt",
+  IsDir: false,
+  ShouldIgnore: false,
 },
 {
   Group: "qualified-exception",
-  Description: "sibling files remain ignored",
+  Description: "sibling remains ignored",
   Patterns: []string{"build/", "!build/file.txt"},
-  Path: "build/other.bin", IsDir: false, ShouldIgnore: true,
+  Path: "build/other.bin",
+  IsDir: false,
+  ShouldIgnore: true,
 }
 ```
 
-We allow targeted traversal only for the exact path mentioned.
-
-### E. Verify generic `!*.txt` still blocked without traversal open
+### C) Root-anchored star (`/*`) correctness
 
 ```go
 {
-  Group: "blocked-generic-negation",
-  Description: "parent excluded; !*.txt alone doesn’t help",
-  Patterns: []string{"build/", "!*.txt"},
-  Path: "build/file.txt", IsDir: false, ShouldIgnore: true,
+  Group: "root-star",
+  Description: "/* matches only top-level entries",
+  Patterns: []string{"/*"},
+  Path: "top",
+  IsDir: true,
+  ShouldIgnore: true,
+},
+{
+  Group: "root-star",
+  Description: "/* does not match nested entries",
+  Patterns: []string{"/*"},
+  Path: "top/nested/file.txt",
+  IsDir: false,
+  ShouldIgnore: false,
 }
 ```
 
-Reinforces the “closed parent” gate. ([Git][1])
-
----
-
-# 2) Tiny robustness & coverage polish (no behavior change)
-
-These are safe, parity-neutral additions — they just harden tests.
-
-### A. Literal “#” at start
-
-`.gitignore` treats `#` as a comment unless escaped. Add:
+### D) Character class and `?` coverage (sanity vs doublestar)
 
 ```go
 {
-  Group: "literals",
-  Description: `\#file is a literal pattern for "#file"`,
-  Patterns: []string{`\\#file`},
-  Path: "#file", IsDir: false, ShouldIgnore: true,
+  Group: "charclass-qmark",
+  Description: "log?.txt matches one digit only",
+  Patterns: []string{"log?.txt"},
+  Path: "log1.txt", IsDir: false, ShouldIgnore: true,
+},
+{
+  Group: "charclass-qmark",
+  Description: "log10.txt does not match log?.txt",
+  Patterns: []string{"log?.txt"},
+  Path: "log10.txt", IsDir: false, ShouldIgnore: false,
+},
+{
+  Group: "charclass-range",
+  Description: "img[0-2].png matches",
+  Patterns: []string{"img[0-2].png"},
+  Path: "img1.png", IsDir: false, ShouldIgnore: true,
+},
+{
+  Group: "charclass-range",
+  Description: "img3.png does not match img[0-2].png",
+  Patterns: []string{"img[0-2].png"},
+  Path: "img3.png", IsDir: false, ShouldIgnore: false,
 }
 ```
 
-Backed by the spec’s “line starting with `#` serves as a comment. Put a backslash in front of the first hash for patterns that begin with a hash.” ([Git][1])
+### E) Directory pattern with mid slash + negation cascade (hierarchy)
 
-### B. Sanity check: `foo/*` one-level rule
-
-You already cover this, but it’s a good “lock”:
+These reinforce that each level must be un-ignored explicitly if a parent was excluded:
 
 ```go
 {
-  Group: "one-level",
-  Description: "foo/* does not match foo/bar/hello.c",
-  Patterns: []string{"foo/*"},
-  Path: "foo/bar/hello.c", IsDir: false, ShouldIgnore: false,
+  Group: "parent-exclusion-hierarchy",
+  Description: "foo/ blocks; !foo/bar/ alone cannot re-include",
+  Patterns: []string{"foo/", "!foo/bar/"},
+  Path: "foo/bar",
+  IsDir: true,
+  ShouldIgnore: true,
+},
+{
+  Group: "parent-exclusion-hierarchy",
+  Description: "must unignore each level explicitly",
+  Patterns: []string{"foo/", "!foo/", "!foo/bar/"},
+  Path: "foo/bar",
+  IsDir: true,
+  ShouldIgnore: false,
 }
 ```
 
-Directly mirrors the manual example. ([Git][1])
+> You already have very similar “hierarchy” tests for files (`!foo/bar/baz.txt`); these add the **directory** focus, which the bug in `matchesDirectoryPath` would expose.
 
 ---
 
-# Notes on “`**/`” and directory patterns
+# Housekeeping (tiny but useful)
 
-Your current tests around `**` look consistent with the manual:
-
-* Trailing `/**` matches everything inside a directory (`abc/**`). ([Git][1])
-* Patterns ending with `/` match directories and “paths underneath”. ([Git][1])
-
-If you also test `**/` alone, keep in mind it’s a directory-only pattern; as a positive rule it will cause directories (and thus their contents) to be ignored by virtue of the directory match. That aligns with the spec’s directory semantics. ([Git][1])
+* **Fix the misleading comments** (negated dir patterns do not by themselves re-include files).
+* **Correct the misleading TODO** near the `negation-non-dir-parent` case: the expectation you’ve set (`ShouldIgnore: false`) is correct for Git; the comment suggesting Git ignores it is not.
 
 ---
 
-## Quick checklist (what to change where)
+# Summary
 
-* **gitignore.go**
+* **One real code change**: make slash-containing patterns match directories by full path even when `p.rooted == false` (since we’re in a single root `.gitignore` world, *slash ⇒ anchored to root*).
+* **Keep your parent-exclusion prepass exactly as is** (it already handles `!build` and `!build/` as directory re-opens).
+* **Add the tests above** to seal off the remaining edge cases (mid-slash dir patterns; `/*`; char class/`?`; explicit re-open sequences).
 
-  * Add `reopenedDirs` computation (see Pass B above).
-  * Add `isUnderClosedAncestor(path)` helper and call it before honoring slash-less negations.
-  * Allow *targeted traversal* when processing path-specific negations (`!a/b/c.txt`), without globally reopening parent directories.
-
-* **gitignore\_test.go**
-
-  * Flip the expectation on the existing TODO case (`* + build + !build + !*.txt` → still ignored).
-  * Add the four blocks B–E above.
-  * Add the literal `\#` test.
-
-These changes bring behavior in line with Git’s documented rules about parent-excluded directories and when negations can take effect. ([Git][1])
-
-If you want, I can draft the exact diffs for `gitignore.go` (keeping your current structure), but the high-level plan above is enough to implement with minimal churn.
-
-[1]: https://git-scm.com/docs/gitignore "Git - gitignore Documentation"
+With that, the implementation should line up 1-to-1 with Git for your “single root .gitignore” scope, and the suite will catch regressions promptly.
