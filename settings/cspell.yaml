@@ -4,6 +4,3 @@ dictionaries:
 dictionaryDefinitions:
   - name: go-match-words
     path: project-words
-
-ignorePaths:
-  - "**/internal/gitignore/gitignore_test.go"

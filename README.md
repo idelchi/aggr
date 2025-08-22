@@ -152,6 +152,23 @@ When `--file` is not set, it defaults to the first found of `.aggrignore`, `~/.c
 - **No absolute paths, no `..`:** Any absolute path or pattern containing a `..` segment is rejected.
   Use `-C` if you need to work elsewhere.
 - **Pattern normalization is opinionated:** `.` becomes `**`, and a plain directory becomes recursive.
-  If you want exact matching behavior, use explicit globs.
+  If you want exact matching behaviour, use explicit globs.
 - **Binary detection is conservative:** Files that look binary are skipped.
   If you need to force-include something unusual, use `--binary/-b` to disable the check.
+
+When multiple filtering rules are in play, patterns are applied in the following order (later patterns override earlier ones):
+
+1. **`.aggrignore` file** - Patterns from your ignore file (or defaults if not specified)
+2. **Extension filters** - When using `-x/--extensions`, creates include patterns for those extensions
+3. **Default excludes** - Built-in patterns for VCS/build directories (`.git/`, `vendor/`, `node_modules/`, etc.)
+4. **Executable exclusion** - The `aggr` binary itself is automatically excluded
+5. **Output file exclusion** - When using `-o`, the output file is excluded to prevent recursion
+6. **CLI ignore patterns** - Patterns specified with `-i/--ignore` flags
+7. **Hidden files** - `.` prefixed files/folders are excluded last (unless `-a/--hidden` is used)
+
+This means that:
+
+- CLI patterns (`-i`) can override defaults and `.aggrignore` patterns
+- Hidden file exclusion happens last, so you can't accidentally include a hidden file unless you use `-a/--hidden`
+
+You can see the order by passing `--dry-run`.
