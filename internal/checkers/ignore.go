@@ -4,18 +4,20 @@ import (
 	"fmt"
 	"strings"
 
-	ignore "github.com/sabhiram/go-gitignore"
-
 	"github.com/idelchi/godyl/pkg/path/file"
 )
 
 // Ignore is a checker that filters files based on gitignore-style patterns.
 type Ignore struct {
-	ignore *ignore.GitIgnore
+	ignore Ignorer
+}
+
+type Ignorer interface {
+	IsIgnored(path string, isDir bool) bool
 }
 
 // NewIgnore creates a new Ignore checker with the provided GitIgnore matcher.
-func NewIgnore(ignore *ignore.GitIgnore) *Ignore {
+func NewIgnore(ignore Ignorer) *Ignore {
 	return &Ignore{ignore: ignore}
 }
 
@@ -45,15 +47,13 @@ func (i *Ignore) check(path string) error {
 		matchPath = strings.TrimRight(matchPath, "/") + "/"
 	}
 
-	if ok, pattern := i.ignore.MatchesPathHow(matchPath); ok {
+	if ok := i.ignore.IsIgnored(matchPath, isDir); ok {
 		if isDir {
-			return fmt.Errorf("%w: dir in ignore patterns %q", ErrPrune, pattern.Pattern)
+			return fmt.Errorf("%w: dir in ignore patterns", ErrPrune)
 		}
 
-		return fmt.Errorf("%w: file in ignore patterns %q", ErrSkip, pattern.Pattern)
+		return fmt.Errorf("%w: file in ignore patterns", ErrSkip)
 	}
-
-	fmt.Printf("  - %q: not in ignore patterns\n", path)
 
 	return nil
 }

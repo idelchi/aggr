@@ -9,11 +9,9 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
-
-	"github.com/denormal/go-gitignore"
 
 	"github.com/idelchi/aggr/internal/cli"
+	"github.com/idelchi/aggr/internal/gitignore"
 )
 
 // version is the application version injected at build time.
@@ -30,27 +28,22 @@ func main() {
 	patterns := []string{
 		"*",
 		"!*/",
-		"!*.go",
-		"internal/",
+		"!internal",
 	}
 
-	// Define an error handler
-	errorHandler := func(err gitignore.Error) bool {
-		fmt.Printf("GitIgnore error at %s: %v\n", err.Position(), err.Underlying())
+	ignorer := gitignore.New(patterns)
 
-		return true // continue parsing despite errors
-	}
+	path := "internal/config/file/a.sh"
+	isDir := false
 
-	joined := strings.Join(patterns, "\n") // or whatever separator you want
-	reader := strings.NewReader(joined)
-	cwd, _ := os.Getwd()
-	ignorer := gitignore.New(reader, cwd, errorHandler)
+	fmt.Printf("Patterns: %v\n", patterns)
+	fmt.Printf("Path: %q\n", path)
 
-	match := ignorer.Match("internal/config/config.go")
-	if match != nil {
-		fmt.Printf("denormal/go-gitignore: %s, Ignore: %t\n", match.String(), match.Ignore())
+	ok := ignorer.IsIgnored(path, isDir)
+	if ok {
+		fmt.Printf("%q is ignored\n", path)
 	} else {
-		fmt.Println("denormal/go-gitignore: No matching pattern found.")
+		fmt.Printf("%q is not ignored\n", path)
 	}
 
 	os.Exit(0)

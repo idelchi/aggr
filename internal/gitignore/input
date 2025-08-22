@@ -1,0 +1,132 @@
+ight be wrong / fragile (add tests to be sure)
+
+Parent-basename matching for non-dir patterns
+For non-dir patterns (e.g., build) you also treat a file as matched when any parent directory basename matches the pattern (to emulate “ignore the directory implies ignore its contents”). That’s pragmatically fine, but it subtly differs from Git’s notion that the file itself isn’t matched by build; it’s ignored because an ancestor dir is ignored. Your parentExcluded guard likely prevents mis-reinclusions, but a couple of targeted tests will ensure no surprises when negations shuffle around.
+
+** zero-segment behavior
+Correct parity depends on whether a/** matches a (zero segments). doublestar treats ** as “zero or more segments”; Git’s wildmatch also allows zero in many positions, but discrepancies tend to hide here. Your data/** scenarios strongly imply the intended behavior, but add an explicit assertion to lock it (see tests below).
+
+Braces inside character classes
+You globally escape {/}, including when they appear in [...]. That should be harmless (both literal either way), but because it’s a transformation outside doublestar, it’s worth a couple of focused cases to ensure we never regress on odd parser interactions.
+
+Excluding dirs via content patterns
+Your first pass excludes directories for patterns like ** or rooted /* (and correctly skips */ content-only). This is deliberate, but “does abc/** exclude the abc dir entry itself in the parent map?” is library-behavior-dependent. Tests make it explicit.
+
+Gaps I’d add to the test suite (surgical, high-signal)
+
+Add these to gitignore_test.go to lock parity and catch regressions without noise:
+
+Negated non-dir pattern should not “directly” match child files
+(We expect behavior to remain correct due to parentExcluded, but we assert it explicitly.)
+
+{
+  Group: "negation-non-dir-parent",
+  Description: "non-dir !build should not by itself un-ignore child files when parent stays ignored",
+  Patterns: []string{"*", "build", "!build", "!*.txt"}, // directories still ignored by "*"
+  Path: "build/file.txt",
+  IsDir: false,
+  ShouldIgnore: true, // parent still excluded because "*" ignores all dirs without !*/
+},
+
+
+and the “un-ignore the parent then allow files” variant:
+
+{
+  Group: "negation-non-dir-parent",
+  Description: "un-ignore build dir then allow .txt",
+  Patterns: []string{"build", "!build", "!*.txt"},
+  Path: "build/file.txt",
+  IsDir: false,
+  ShouldIgnore: false,
+},
+
+
+(This pins intent regardless of whether the file-level match is via parent-basename or parent-exclusion logic.)
+
+a/** zero-segment match
+
+{
+  Group: "doublestar-zero",
+  Description: "a/** should treat zero segments as valid and ignore a/ itself via parent rules",
+  Patterns: []string{"a/**"},
+  Path: "a",
+  IsDir: true,
+  ShouldIgnore: true,
+},
+{
+  Group: "doublestar-zero",
+  Description: "negating a/**/ should re-allow the a/ directory itself",
+  Patterns: []string{"a/**", "!a/**/"},
+  Path: "a",
+  IsDir: true,
+  ShouldIgnore: false,
+},
+
+
+(If this fails, you’ll know exactly where to adjust the excluded-dirs pass.)
+
+Braces inside character classes remain literal after escape pass
+
+{
+  Group: "brace-in-class-escape",
+  Description: "braces inside [] stay literal despite global brace escaping",
+  Patterns: []string{"file[{}].md"},
+  Path: "file{.md",
+  IsDir: false,
+  ShouldIgnore: true,
+},
+{
+  Group: "brace-in-class-escape",
+  Description: "ensure '}' also literal in class",
+  Patterns: []string{"file[{}].md"},
+  Path: "file}.md",
+  IsDir: false,
+  ShouldIgnore: true,
+},
+
+
+(Yes, you already have similar ones; this pair ties directly to the escapeBraces transform.)
+
+Weird ** placements that Git traditionally treats as two *
+Git historically treats ** specially as a path globstar. Patterns like ab**cd are edge-y; some engines over-permit them. Lock your intent explicitly:
+
+{
+  Group: "odd-doublestar",
+  Description: "ab**cd should behave like ab* *cd (Git-style), not cross slashes",
+  Patterns: []string{"ab**cd"},
+  Path: "ab/x/cd",    // with slash
+  IsDir: false,
+  ShouldIgnore: false,
+},
+{
+  Group: "odd-doublestar",
+  Description: "ab**cd matches same-segment expansions",
+  Patterns: []string{"ab**cd"},
+  Path: "abZZcd",
+  IsDir: false,
+  ShouldIgnore: true,
+},
+
+
+(If doublestar treats ** mid-segment as “globstar”, you’ll see it here and can decide whether to pre-normalize such patterns to Git-like behavior.)
+
+Negation of bare ! / whitespace-only after ! is a no-op
+Just to freeze parser edge cases:
+
+{
+  Group: "negation-edge",
+  Description: "bare ! line is ignored",
+  Patterns: []string{"!", "*.txt"},
+  Path: "x.txt",
+  IsDir: false,
+  ShouldIgnore: true,
+},
+
+
+(Your parser currently discards empty/trimmed patterns; this makes it intentional.)
+
+Tiny code nits (optional)
+
+In escapeBraces, you blindly escape {/}. Consider skipping inside [...] character classes to avoid unnecessary backslashes (your current tests pass either way, but it reduces surprise).
+
+trimTrailingSpaces is correct as far as your tests go; keep it isolated and covered, because it’s the easiest place to regress if someone “simplifies” it later. Maybe add a short doc comment summarizing its invariant (e.g., “remove all unescaped trailing spaces; keep escaped ones, dropping the escape char”).

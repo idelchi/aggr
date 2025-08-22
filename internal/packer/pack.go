@@ -56,24 +56,7 @@ func (p Packer) Pack(searchPatterns []string) error {
 
 	ignorePatterns := patterns.Patterns{}
 
-	log.Debug("- Checking for .aggignore file")
-
-	aggrignore, ok := ActiveAggrignore()
-	if ok {
-		log.Debugf("  - Found .aggignore file: %q", aggrignore)
-
-		lines, err := aggrignore.Lines()
-		if err != nil {
-			return fmt.Errorf("reading %q: %w", aggrignore, err)
-		}
-
-		ignorePatterns = append(ignorePatterns, patterns.Patterns(lines).TrimEmpty()...)
-	} else {
-		log.Debug("  - No active .aggignore file found")
-	}
-
 	log.Debug("- Adding ignore patterns:")
-	log.Debugf("  - .aggignore: %v", ignorePatterns)
 	log.Debugf("  - default: %v", config.DefaultExcludes)
 
 	ignorePatterns = append(ignorePatterns, config.DefaultExcludes...)
@@ -94,9 +77,6 @@ func (p Packer) Pack(searchPatterns []string) error {
 	}
 
 	if len(p.Options.Rules.Extensions) > 0 {
-		// search = ExtensionsToPaths(p.Options.Rules.Extensions, search)
-		// log.Debugf("  - file extension patterns passed on commandline: %v", p.Options.Rules.Extensions)
-
 		extras := patterns.Patterns{"*", "!*/"}
 
 		extras = append(extras, ExtensionsToPatterns(p.Options.Rules.Extensions)...)
@@ -104,6 +84,20 @@ func (p Packer) Pack(searchPatterns []string) error {
 
 		ignorePatterns = append(ignorePatterns, extras...)
 	}
+
+	aggrignore, ok := ActiveAggrignore()
+	if ok {
+		lines, err := aggrignore.Lines()
+		if err != nil {
+			return fmt.Errorf("reading %q: %w", aggrignore, err)
+		}
+
+		ignorePatterns = append(ignorePatterns, patterns.Patterns(lines).TrimEmpty()...)
+	} else {
+		log.Debug("  - No active .aggignore file found")
+	}
+
+	log.Debugf("  - .aggignore: %v", ignorePatterns)
 
 	log.Debugf("  - patterns passed on commandline: %v", p.Options.Rules.Patterns)
 
