@@ -1934,7 +1934,10 @@ func TestGitIgnore(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.Group+"/"+tc.Description, func(t *testing.T) {
 			t.Parallel()
-			isIgnored := gitignore.Ignore(tc.Patterns, tc.Path, tc.IsDir)
+
+			g := gitignore.New(tc.Patterns)
+			isIgnored := g.IsIgnored(tc.Path, tc.IsDir)
+
 			if isIgnored != tc.ShouldIgnore {
 				t.Errorf("Ignore(patterns=%v, path=%q, isDir=%v) = %v, want %v",
 					tc.Patterns, tc.Path, tc.IsDir, isIgnored, tc.ShouldIgnore)

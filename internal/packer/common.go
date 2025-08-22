@@ -48,12 +48,19 @@ func GetOutputWriter(options config.Options) (*os.File, error) {
 // It checks the current directory and ~/.config/aggr for ignore files.
 // Returns the found file and true if an ignore file exists, otherwise false.
 func DefaultAggrignores() (file.File, bool) {
-	files := files.New(".", config.DefaultIgnoreFile)
+	files := files.New(config.DefaultIgnoreFile)
+	fmt.Println(files)
 
 	home, err := os.UserHomeDir()
 	if err == nil {
-		files = append(files, file.New(home, ".config", "aggrignore", config.DefaultIgnoreFile))
+		files.AddFile(file.New(home, ".config", "aggrignore", config.DefaultIgnoreFile))
 	}
+
+	files.AddFile(file.New(".gitignore"))
+	fmt.Println(files)
+	fmt.Println(files.Exists())
+
+	os.Exit(0)
 
 	return files.Exists()
 }

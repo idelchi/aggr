@@ -90,7 +90,7 @@ func Execute(version string) error {
 	// What to include/exclude
 	root.Flags().StringVarP(&configuration.Rules.Root, "root", "C", ".", "Root directory to use")
 	root.Flags().StringVarP(&configuration.Rules.IgnoreFile.Path, "ignore-file", "f", config.DefaultIgnoreFile,
-		"Path to the .aggignore file")
+		"Path to the .aggignore file. So to an empty string to completely ignore")
 	root.Flags().
 		StringSliceVarP(&configuration.Rules.Extensions, "extensions", "x", []string{}, "File extensions to include")
 	root.Flags().

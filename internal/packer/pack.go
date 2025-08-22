@@ -10,6 +10,7 @@ import (
 
 	"github.com/idelchi/aggr/internal/checkers"
 	"github.com/idelchi/aggr/internal/config"
+	"github.com/idelchi/aggr/internal/gitignore"
 	"github.com/idelchi/aggr/internal/patterns"
 	"github.com/idelchi/aggr/internal/walker"
 	"github.com/idelchi/godyl/pkg/path/file"
@@ -87,15 +88,16 @@ func (p Packer) Pack(searchPatterns []string) error {
 
 	var aggrignore file.File
 
-	if !p.Options.Rules.IgnoreFile.Set {
-		aggrignore, _ = DefaultAggrignores()
-	} else {
-		aggrignore = file.New(p.Options.Rules.IgnoreFile.Path)
+	if !p.Options.Rules.IgnoreFile.Set || p.Options.Rules.IgnoreFile.Path != "" {
+		if !p.Options.Rules.IgnoreFile.Set {
+			aggrignore, _ = DefaultAggrignores()
+		} else {
+			aggrignore = file.New(p.Options.Rules.IgnoreFile.Path)
 
-		if !aggrignore.Exists() {
-			return fmt.Errorf("ignore file %q does not exist", aggrignore)
+			if !aggrignore.Exists() {
+				return fmt.Errorf("ignore file %q does not exist", aggrignore)
+			}
 		}
-
 	}
 
 	if aggrignore.Set() {
@@ -106,7 +108,7 @@ func (p Packer) Pack(searchPatterns []string) error {
 
 		ignorePatterns = append(ignorePatterns, patterns.Patterns(lines).TrimEmpty()...)
 
-		log.Debugf("  - .aggignore (from %q): %v", aggrignore, patterns.Patterns(lines).TrimEmpty())
+		log.Debugf("  - .aggignore (from %q): %v", aggrignore, gitignore.New(ignorePatterns).Patterns())
 	} else {
 		log.Debug("  - .aggignore: [none loaded]")
 	}
