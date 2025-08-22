@@ -114,7 +114,7 @@ func parsePattern(line string) *pattern {
 		return nil
 	}
 
-	p := &pattern{
+	pattern := &pattern{
 		original: line,
 	}
 
@@ -126,7 +126,7 @@ func parsePattern(line string) *pattern {
 		line = line[1:] // Remove the backslash, keep the #
 	case strings.HasPrefix(line, "!"):
 		// Negation pattern
-		p.negated = true
+		pattern.negated = true
 		line = line[1:]
 	}
 
@@ -140,13 +140,13 @@ func parsePattern(line string) *pattern {
 
 	// Check if pattern matches directories only (trailing /)
 	if strings.HasSuffix(line, "/") {
-		p.dirOnly = true
+		pattern.dirOnly = true
 		line = strings.TrimSuffix(line, "/")
 	}
 
 	// Check if pattern is rooted (starts with /)
 	if strings.HasPrefix(line, "/") {
-		p.rooted = true
+		pattern.rooted = true
 		line = strings.TrimPrefix(line, "/")
 	}
 
@@ -156,9 +156,9 @@ func parsePattern(line string) *pattern {
 		return nil
 	}
 
-	p.pattern = line
+	pattern.pattern = line
 
-	return p
+	return pattern
 }
 
 // trimTrailingSpaces removes all unescaped trailing spaces from a gitignore pattern
@@ -179,46 +179,47 @@ func parsePattern(line string) *pattern {
 //	"file\\\\\\ " -> "file\\\\ "  (escaped space after escaped backslash)
 //
 // This precise behavior matches Git's exact implementation for gitignore pattern processing.
-func trimTrailingSpaces(s string) string {
+func trimTrailingSpaces(str string) string {
 	// Git's behavior: trim trailing spaces unless they are escaped
 	// An escaped space is a backslash followed by a space: "\ "
 	// But we need to be careful with multiple backslashes
-
-	if s == "" {
-		return s
+	if str == "" {
+		return str
 	}
 
 	// Find where to trim by scanning backwards through trailing spaces
-	trimEnd := len(s)
-	i := len(s) - 1
+	trimEnd := len(str)
+	index := len(str) - 1
 
 	// Scan backwards through trailing spaces
-	for i >= 0 && s[i] == ' ' {
+	for index >= 0 && str[index] == ' ' {
 		// Check if this space is escaped
-		if i > 0 && s[i-1] == '\\' {
+		if index > 0 && str[index-1] == '\\' {
 			// Count consecutive backslashes before this space
 			backslashCount := 0
-			for j := i - 1; j >= 0 && s[j] == '\\'; j-- {
+
+			for j := index - 1; j >= 0 && str[j] == '\\'; j-- {
 				backslashCount++
 			}
 			// If odd number of backslashes, the space is escaped
 			if backslashCount%2 == 1 {
 				// This space is escaped, include it and the escape backslash
 				// The escape backslash will be removed later
-				trimEnd = i + 1
+				trimEnd = index + 1
 
 				break
 			}
 		}
-		i--
+
+		index--
 	}
 
 	// If we found trailing spaces (escaped or not)
-	if i < len(s)-1 {
-		trimEnd = i + 1
+	if index < len(str)-1 {
+		trimEnd = index + 1
 	}
 
-	result := s[:trimEnd]
+	result := str[:trimEnd]
 
 	// Handle escaped trailing spaces by removing the escape backslash
 	// Only remove the backslash right before a trailing space
@@ -314,26 +315,40 @@ func (g *GitIgnore) IsIgnored(path string, isDir bool) bool {
 	return ignored
 }
 
+// Patterns returns the original pattern strings after parsing.
+func (g *GitIgnore) Patterns() []string {
+	if len(g.patterns) == 0 {
+		return nil
+	}
+
+	patterns := make([]string, len(g.patterns))
+	for i, p := range g.patterns {
+		patterns[i] = p.original
+	}
+
+	return patterns
+}
+
 // matches determines if a pattern matches a given path, handling both directory-only
 // and regular patterns according to Git's matching rules.
-func matches(p pattern, path string, isDir bool) bool {
+func matches(pattern pattern, path string, isDir bool) bool {
 	// Special handling for directory-only patterns
-	if p.dirOnly {
+	if pattern.dirOnly {
 		// Directory patterns can match:
 		// 1. The directory itself
 		// 2. Files inside the directory
-		return matchesDirectoryPattern(p, path, isDir)
+		return matchesDirectoryPattern(pattern, path, isDir)
 	}
 
 	// Regular patterns
-	return matchesFilePattern(p, path, isDir)
+	return matchesFilePattern(pattern, path, isDir)
 }
 
 // matchesDirectoryPattern handles matching for directory-only patterns (ending with /).
 // These patterns have special semantics for positive vs negative patterns:
 //   - Positive patterns match the directory and files inside it
 //   - Negative patterns have complex rules for re-inclusion
-func matchesDirectoryPattern(p pattern, path string, isDir bool) bool {
+func matchesDirectoryPattern(pattern pattern, path string, isDir bool) bool {
 	// Directory patterns work differently for positive and negative patterns:
 	// - Positive patterns (build/) match the directory AND files inside it
 	// - Negative patterns have special cases:
@@ -341,16 +356,16 @@ func matchesDirectoryPattern(p pattern, path string, isDir bool) bool {
 	//   - Simple patterns like !build/ match directory and files for re-inclusion
 	if isDir {
 		// Check if this directory matches the pattern directly
-		if matchesDirectoryPath(p, path) {
+		if matchesDirectoryPath(pattern, path) {
 			return true
 		}
 
 		// For positive patterns, also check if directory is inside a matching directory
-		if !p.negated {
+		if !pattern.negated {
 			parts := strings.Split(path, "/")
 			for i := 1; i < len(parts); i++ {
 				parentPath := strings.Join(parts[:i], "/")
-				if matchesDirectoryPath(p, parentPath) {
+				if matchesDirectoryPath(pattern, parentPath) {
 					return true
 				}
 			}
@@ -360,7 +375,7 @@ func matchesDirectoryPattern(p pattern, path string, isDir bool) bool {
 	}
 
 	// For files:
-	if p.negated {
+	if pattern.negated {
 		// CRITICAL: Negated directory patterns (!build/) should NEVER match files
 		// They only match the directory itself for the purpose of un-ignoring the directory
 		// but NOT for re-including files inside the directory
@@ -371,7 +386,7 @@ func matchesDirectoryPattern(p pattern, path string, isDir bool) bool {
 	parts := strings.Split(path, "/")
 	for i := 1; i < len(parts); i++ {
 		parentPath := strings.Join(parts[:i], "/")
-		if matchesDirectoryPath(p, parentPath) {
+		if matchesDirectoryPath(pattern, parentPath) {
 			return true
 		}
 	}
@@ -382,22 +397,23 @@ func matchesDirectoryPattern(p pattern, path string, isDir bool) bool {
 // matchesDirectoryPath checks if a directory path matches a pattern.
 // Handles both rooted patterns (anchored to repository root) and
 // non-rooted patterns that can match at any directory level.
-func matchesDirectoryPath(p pattern, dirPath string) bool {
-	if p.rooted {
+func matchesDirectoryPath(pattern pattern, dirPath string) bool {
+	if pattern.rooted {
 		// Rooted patterns match only from the repository root
-		return matchGlob(p, dirPath)
+		return matchGlob(pattern, dirPath)
 	}
 
 	// Non-rooted patterns can match at any level
 	// Try matching the full path
-	if matchGlob(p, dirPath) {
+	if matchGlob(pattern, dirPath) {
 		return true
 	}
 
 	// For patterns without slash, also try matching just the basename
-	if !strings.Contains(p.pattern, "/") {
+	if !strings.Contains(pattern.pattern, "/") {
 		basename := path.Base(dirPath)
-		return matchGlob(p, basename)
+
+		return matchGlob(pattern, basename)
 	}
 
 	// For patterns with slash, they should be anchored to root (Git behavior)
@@ -408,11 +424,11 @@ func matchesDirectoryPath(p pattern, dirPath string) bool {
 // matchesFilePattern handles matching for regular patterns (not directory-only).
 // Implements Git's complex rules for rooted vs non-rooted patterns,
 // basename matching, and special handling for wildcard patterns.
-func matchesFilePattern(p pattern, filePath string, isDir bool) bool {
+func matchesFilePattern(pattern pattern, filePath string, isDir bool) bool {
 	// Special case: * pattern should only match files/dirs without slashes
 	// BUT if it's rooted (/*), it should only match at root level
-	if p.pattern == "*" {
-		if p.rooted {
+	if pattern.pattern == "*" {
+		if pattern.rooted {
 			// /* should only match top-level entries
 			return !strings.Contains(filePath, "/")
 		}
@@ -422,22 +438,22 @@ func matchesFilePattern(p pattern, filePath string, isDir bool) bool {
 		return basename != "." && basename != "" // Don't match current dir or empty
 	}
 
-	if p.rooted {
+	if pattern.rooted {
 		// Rooted patterns match only from the repository root
-		return matchGlob(p, filePath)
+		return matchGlob(pattern, filePath)
 	}
 
 	// Non-rooted patterns can match at any level
 
 	// Try matching the full path
-	if matchGlob(p, filePath) {
+	if matchGlob(pattern, filePath) {
 		return true
 	}
 
 	// For patterns without slash, also try matching just the basename
-	if !strings.Contains(p.pattern, "/") {
+	if !strings.Contains(pattern.pattern, "/") {
 		basename := path.Base(filePath)
-		if matchGlob(p, basename) {
+		if matchGlob(pattern, basename) {
 			return true
 		}
 
@@ -449,17 +465,18 @@ func matchesFilePattern(p pattern, filePath string, isDir bool) bool {
 				parentPath := strings.Join(parts[:i], "/")
 
 				parentBasename := path.Base(parentPath)
-				if matchGlob(p, parentBasename) {
+				if matchGlob(pattern, parentBasename) {
 					return true
 				}
 			}
 		}
+
 		return false
 	}
 
 	// For patterns with slash, they should be anchored to root (Git behavior)
 	// Only match the full path since non-rooted slash patterns are treated as root-anchored
-	return matchGlob(p, filePath)
+	return matchGlob(pattern, filePath)
 }
 
 // matchGlob performs Git-compatible glob pattern matching using the doublestar library.
@@ -489,6 +506,8 @@ func matchGlob(p pattern, targetPath string) bool {
 // The function carefully tracks character class contexts ([...]) where braces
 // should not be escaped, and counts preceding backslashes to determine if
 // a brace is already escaped.
+//
+//nolint:gocognit		// Complexity is acceptable.
 func escapeBraces(pattern string) string {
 	if pattern == "" {
 		return pattern
@@ -496,18 +515,19 @@ func escapeBraces(pattern string) string {
 
 	// Pre-allocate result slice with extra capacity for potential escape characters
 	const extraCapacityForEscapes = 10
+
 	result := make([]byte, 0, len(pattern)+extraCapacityForEscapes)
 	inCharClass := false
 
-	for i, char := range []byte(pattern) {
+	for index, char := range []byte(pattern) {
 		// Track character class boundaries
 		switch char {
 		case '[':
-			if i == 0 || pattern[i-1] != '\\' {
+			if index == 0 || pattern[index-1] != '\\' {
 				inCharClass = true
 			}
 		case ']':
-			if (i == 0 || pattern[i-1] != '\\') && inCharClass {
+			if (index == 0 || pattern[index-1] != '\\') && inCharClass {
 				inCharClass = false
 			}
 		case '{', '}':
@@ -515,7 +535,8 @@ func escapeBraces(pattern string) string {
 			if !inCharClass {
 				// Check if this brace is already escaped by counting preceding backslashes
 				backslashCount := 0
-				for j := i - 1; j >= 0 && pattern[j] == '\\'; j-- {
+
+				for j := index - 1; j >= 0 && pattern[j] == '\\'; j-- {
 					backslashCount++
 				}
 				// If even number of backslashes (including 0), the brace is not escaped
@@ -530,20 +551,6 @@ func escapeBraces(pattern string) string {
 	}
 
 	return string(result)
-}
-
-// Patterns returns the original pattern strings after parsing.
-func (g *GitIgnore) Patterns() []string {
-	if len(g.patterns) == 0 {
-		return nil
-	}
-
-	patterns := make([]string, len(g.patterns))
-	for i, p := range g.patterns {
-		patterns[i] = p.original
-	}
-
-	return patterns
 }
 
 // findExcludedParentDirectories identifies which parent directories are permanently excluded.

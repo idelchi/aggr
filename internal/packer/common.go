@@ -45,19 +45,22 @@ func GetOutputWriter(options config.Options) (*os.File, error) {
 }
 
 // DefaultAggrignores searches for and returns the default .aggrignore file.
-// It checks the current directory and ~/.config/aggr for ignore files.
+// It checks the current directory and ~/.config/aggr for ignore files, finally
+// falling back to .gitignore in the current directory.
 // Returns the found file and true if an ignore file exists, otherwise false.
-func DefaultAggrignores() (file.File, bool) {
+func DefaultAggrignores() file.File {
 	files := files.New(config.DefaultIgnoreFile)
 
 	home, err := os.UserHomeDir()
 	if err == nil {
-		files.AddFile(file.New(home, ".config", "aggrignore", config.DefaultIgnoreFile))
+		files.AddFile(file.New(home, ".config", config.Name, config.DefaultIgnoreFile))
 	}
 
 	files.AddFile(file.New(".gitignore"))
 
-	return files.Exists()
+	file, _ := files.Exists()
+
+	return file
 }
 
 // ExtensionsToPatterns converts a list of file extensions to ignore patterns.

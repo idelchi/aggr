@@ -12,6 +12,7 @@ type Ignore struct {
 	ignore Ignorer
 }
 
+// Ignorer is an interface for checking if a file or directory is ignored.
 type Ignorer interface {
 	IsIgnored(path string, isDir bool) bool
 }

@@ -6,7 +6,12 @@ import (
 	"github.com/idelchi/aggr/internal/gitignore"
 )
 
+// TestGitIgnore contains the main test cases to validate parity with gitignore.
+//
+//nolint:maintidx		// The number of test cases are warranted.
 func TestGitIgnore(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		Group        string
 		Description  string

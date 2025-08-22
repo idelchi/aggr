@@ -18,7 +18,7 @@ func Execute(version string) error {
 	var configuration config.Options
 
 	root := &cobra.Command{
-		Use:   "aggr",
+		Use:   config.Name,
 		Short: "Aggregate and unpack files",
 		Long: heredoc.Doc(`
 			aggr is a command-line utility that recursively aggregates files
@@ -89,8 +89,8 @@ func Execute(version string) error {
 
 	// What to include/exclude
 	root.Flags().StringVarP(&configuration.Rules.Root, "root", "C", ".", "Root directory to use")
-	root.Flags().StringVarP(&configuration.Rules.IgnoreFile.Path, "ignore-file", "f", config.DefaultIgnoreFile,
-		"Path to the .aggignore file. So to an empty string to completely ignore")
+	root.Flags().StringVarP(&configuration.Rules.IgnoreFile.Path, "ignore-file", "f", "",
+		"Path to the .aggignore file. Set to an empty string to completely ignore. When not passed, uses defaults")
 	root.Flags().
 		StringSliceVarP(&configuration.Rules.Extensions, "extensions", "x", []string{}, "File extensions to include")
 	root.Flags().

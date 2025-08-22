@@ -58,39 +58,12 @@ func (p Packer) Pack(searchPatterns []string) error {
 	ignorePatterns := patterns.Patterns{}
 
 	log.Debug("- Adding ignore patterns:")
-	log.Debugf("  - default: %v", config.DefaultExcludes)
-
-	ignorePatterns = append(ignorePatterns, config.DefaultExcludes...)
-
-	// Exclude the executable itself
-	if exe, err := os.Executable(); err == nil {
-		path := file.New(exe).Path()
-		log.Debugf("  - the executable: %q", path)
-
-		ignorePatterns = append(ignorePatterns, path)
-	}
-
-	// Add output file to excludes if specified
-	if !p.Options.IsStdout() {
-		log.Debugf("  - the output file: %q", p.Options.Output)
-
-		ignorePatterns = append(ignorePatterns, p.Options.Output)
-	}
-
-	if len(p.Options.Rules.Extensions) > 0 {
-		extras := patterns.Patterns{"*", "!*/"}
-
-		extras = append(extras, ExtensionsToPatterns(p.Options.Rules.Extensions)...)
-		log.Debugf("  - file extension patterns passed on commandline: %v", extras)
-
-		ignorePatterns = append(ignorePatterns, extras...)
-	}
 
 	var aggrignore file.File
 
 	if !p.Options.Rules.IgnoreFile.Set || p.Options.Rules.IgnoreFile.Path != "" {
 		if !p.Options.Rules.IgnoreFile.Set {
-			aggrignore, _ = DefaultAggrignores()
+			aggrignore = DefaultAggrignores()
 		} else {
 			aggrignore = file.New(p.Options.Rules.IgnoreFile.Path)
 
@@ -111,6 +84,34 @@ func (p Packer) Pack(searchPatterns []string) error {
 		log.Debugf("  - .aggignore (from %q): %v", aggrignore, gitignore.New(ignorePatterns).Patterns())
 	} else {
 		log.Debug("  - .aggignore: [none loaded]")
+	}
+
+	if len(p.Options.Rules.Extensions) > 0 {
+		extras := patterns.Patterns{"*", "!*/"}
+
+		extras = append(extras, ExtensionsToPatterns(p.Options.Rules.Extensions)...)
+		log.Debugf("  - file extension patterns passed on commandline: %v", extras)
+
+		ignorePatterns = append(ignorePatterns, extras...)
+	}
+
+	log.Debugf("  - default: %v", config.DefaultExcludes)
+
+	ignorePatterns = append(ignorePatterns, config.DefaultExcludes...)
+
+	// Exclude the executable itself
+	if exe, err := os.Executable(); err == nil {
+		path := file.New(exe).Path()
+		log.Debugf("  - the executable: %q", path)
+
+		ignorePatterns = append(ignorePatterns, path)
+	}
+
+	// Add output file to excludes if specified
+	if !p.Options.IsStdout() {
+		log.Debugf("  - the output file: %q", p.Options.Output)
+
+		ignorePatterns = append(ignorePatterns, p.Options.Output)
 	}
 
 	log.Debugf("  - patterns passed on commandline: %v", p.Options.Rules.Patterns)
