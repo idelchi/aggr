@@ -44,15 +44,15 @@ func GetOutputWriter(options config.Options) (*os.File, error) {
 	return file.OpenForWriting()
 }
 
-// ActiveAggrignore searches for and returns an active .aggrignore file.
-// It checks the current directory and user config directory for ignore files.
+// DefaultAggrignores searches for and returns the default .aggrignore file.
+// It checks the current directory and ~/.config/aggr for ignore files.
 // Returns the found file and true if an ignore file exists, otherwise false.
-func ActiveAggrignore() (file.File, bool) {
+func DefaultAggrignores() (file.File, bool) {
 	files := files.New(".", config.DefaultIgnoreFile)
 
-	configDir, err := os.UserConfigDir()
+	home, err := os.UserHomeDir()
 	if err == nil {
-		files = append(files, file.New(configDir, config.DefaultIgnoreFile))
+		files = append(files, file.New(home, ".config", "aggrignore", config.DefaultIgnoreFile))
 	}
 
 	return files.Exists()

@@ -401,20 +401,22 @@ func matchesFilePattern(p pattern, path string, isDir bool) bool {
 	}
 
 	// For patterns without slash, also try matching just the basename
-	// AND check if file is inside a directory that matches the pattern
 	if !strings.Contains(p.pattern, "/") {
 		basename := pathpkg.Base(path)
 		if matchGlob(p, basename) {
 			return true
 		}
 
-		// Also check if any parent directory matches the pattern
-		parts := strings.Split(path, "/")
-		for i := 1; i < len(parts); i++ {
-			parentPath := strings.Join(parts[:i], "/")
-			parentBasename := pathpkg.Base(parentPath)
-			if matchGlob(p, parentBasename) {
-				return true
+		// For directories: also check if any parent directory matches the pattern
+		// For files: Git only matches the file's basename, not parent directory basenames
+		if isDir {
+			parts := strings.Split(path, "/")
+			for i := 1; i < len(parts); i++ {
+				parentPath := strings.Join(parts[:i], "/")
+				parentBasename := pathpkg.Base(parentPath)
+				if matchGlob(p, parentBasename) {
+					return true
+				}
 			}
 		}
 	} else {

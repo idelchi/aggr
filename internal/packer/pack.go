@@ -85,19 +85,33 @@ func (p Packer) Pack(searchPatterns []string) error {
 		ignorePatterns = append(ignorePatterns, extras...)
 	}
 
-	aggrignore, ok := ActiveAggrignore()
-	if ok {
+	var aggrignore file.File
+
+	if !p.Options.Rules.IgnoreFile.Set {
+		aggrignore, _ = DefaultAggrignores()
+	} else {
+		aggrignore = file.New(p.Options.Rules.IgnoreFile.Path)
+
+		if !aggrignore.Exists() {
+			return fmt.Errorf("ignore file %q does not exist", aggrignore)
+		}
+
+	}
+
+	if aggrignore.Set() {
 		lines, err := aggrignore.Lines()
 		if err != nil {
 			return fmt.Errorf("reading %q: %w", aggrignore, err)
 		}
 
 		ignorePatterns = append(ignorePatterns, patterns.Patterns(lines).TrimEmpty()...)
+
+		log.Debugf("  - .aggignore (from %q): %v", aggrignore, patterns.Patterns(lines).TrimEmpty())
 	} else {
-		log.Debug("  - No active .aggignore file found")
+		log.Debug("  - .aggignore: [none loaded]")
 	}
 
-	log.Debugf("  - .aggignore: %v", ignorePatterns)
+	os.Exit(0)
 
 	log.Debugf("  - patterns passed on commandline: %v", p.Options.Rules.Patterns)
 

@@ -1,3 +1,4 @@
+// === AGGR: BEGIN: main.go
 // Package main provides the aggr command-line tool for aggregating and unpacking files.
 //
 // The aggr tool recursively aggregates files from specified paths into a single file
@@ -55,3 +56,11 @@ func main() {
 		os.Exit(1)
 	}
 }
+// === AGGR: END: main.go
+
+
+tree
+.
+└── main.go
+
+1 files

@@ -1896,13 +1896,36 @@ func TestGitIgnore(t *testing.T) {
 			IsDir:        false,
 			ShouldIgnore: true,
 		},
-
-		// Exclusion + Inclusion
+		// Non-directory pattern Git parity tests
 		{
-			Group:        "negation-edge",
-			Description:  "",
-			Patterns:     []string{"*", "!*/"},
-			Path:         "x.txt",
+			Group:        "negation-parent-basename",
+			Description:  "Non-dir !internal must NOT re-include files under internal/",
+			Patterns:     []string{"*", "!*/", "!internal"},
+			Path:         "internal/config/file/a.sh",
+			IsDir:        false,
+			ShouldIgnore: true, // Git ignores this
+		},
+		{
+			Group:        "non-dir-direntry",
+			Description:  "Pattern 'internal' ignores a directory entry named 'internal'",
+			Patterns:     []string{"internal"},
+			Path:         "internal",
+			IsDir:        true,
+			ShouldIgnore: true,
+		},
+		{
+			Group:        "reinclude-needs-path",
+			Description:  "Re-include files under internal only when pattern matches the file path",
+			Patterns:     []string{"*", "!*/", "!internal/", "!internal/**"},
+			Path:         "internal/config/file/a.sh",
+			IsDir:        false,
+			ShouldIgnore: false,
+		},
+		{
+			Group:        "dir-negation-no-file",
+			Description:  "Dir-only negation does not re-include files",
+			Patterns:     []string{"*", "!*/", "!internal/"},
+			Path:         "internal/config/file/a.sh",
 			IsDir:        false,
 			ShouldIgnore: true,
 		},
@@ -1910,6 +1933,7 @@ func TestGitIgnore(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.Group+"/"+tc.Description, func(t *testing.T) {
+			t.Parallel()
 			isIgnored := gitignore.Ignore(tc.Patterns, tc.Path, tc.IsDir)
 			if isIgnored != tc.ShouldIgnore {
 				t.Errorf("Ignore(patterns=%v, path=%q, isDir=%v) = %v, want %v",

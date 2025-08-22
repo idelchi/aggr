@@ -55,7 +55,9 @@ func Execute(version string) error {
 
 			return nil
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			configuration.Rules.IgnoreFile.Set = cmd.Flags().Lookup("ignore-file").Changed
+
 			packer := packer.Packer{
 				Options: configuration,
 			}
@@ -87,6 +89,8 @@ func Execute(version string) error {
 
 	// What to include/exclude
 	root.Flags().StringVarP(&configuration.Rules.Root, "root", "C", ".", "Root directory to use")
+	root.Flags().StringVarP(&configuration.Rules.IgnoreFile.Path, "ignore-file", "f", config.DefaultIgnoreFile,
+		"Path to the .aggignore file")
 	root.Flags().
 		StringSliceVarP(&configuration.Rules.Extensions, "extensions", "x", []string{}, "File extensions to include")
 	root.Flags().

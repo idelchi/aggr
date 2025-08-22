@@ -1,132 +1,86 @@
-ight be wrong / fragile (add tests to be sure)
+# What’s wrong (parity gap)
 
-Parent-basename matching for non-dir patterns
-For non-dir patterns (e.g., build) you also treat a file as matched when any parent directory basename matches the pattern (to emulate “ignore the directory implies ignore its contents”). That’s pragmatically fine, but it subtly differs from Git’s notion that the file itself isn’t matched by build; it’s ignored because an ancestor dir is ignored. Your parentExcluded guard likely prevents mis-reinclusions, but a couple of targeted tests will ensure no surprises when negations shuffle around.
+* **Symptom:** With patterns `[* !*/ !internal]`, our matcher says `internal/config/file/a.sh` is **not ignored**.
+* **Git parity:** In Git, `!internal` (no slash) matches only the **basename** of the path under test. For a file `…/a.sh`, `!internal` does **not** match, so the file remains **ignored** unless a later pattern matches the file’s own name or path (e.g., `!internal/**`).
+* **Root cause:** In our **file-matching** for **non-directory** patterns (no trailing `/`), we allow a match if **any parent directory’s basename** equals the pattern. That lets `!internal` re-include arbitrary descendants, which Git does not do.
 
-** zero-segment behavior
-Correct parity depends on whether a/** matches a (zero segments). doublestar treats ** as “zero or more segments”; Git’s wildmatch also allows zero in many positions, but discrepancies tend to hide here. Your data/** scenarios strongly imply the intended behavior, but add an explicit assertion to lock it (see tests below).
+# What’s already right (keep)
 
-Braces inside character classes
-You globally escape {/}, including when they appear in [...]. That should be harmless (both literal either way), but because it’s a transformation outside doublestar, it’s worth a couple of focused cases to ensure we never regress on odd parser interactions.
+* Directory-only negations (e.g., `!internal/`) affect only the **directory entry**, not files. That’s why `[* !*/ !internal/]` still leaves the file ignored. This matches Git’s behavior—keep it.
 
-Excluding dirs via content patterns
-Your first pass excludes directories for patterns like ** or rooted /* (and correctly skips */ content-only). This is deliberate, but “does abc/** exclude the abc dir entry itself in the parent map?” is library-behavior-dependent. Tests make it explicit.
+# Code changes (concrete)
 
-Gaps I’d add to the test suite (surgical, high-signal)
+1. **Change non-dir file matching:**
 
-Add these to gitignore_test.go to lock parity and catch regressions without noise:
+   * In the function that matches a **file** against a **non-dir** pattern (pattern without `/` and without trailing `/`):
 
-Negated non-dir pattern should not “directly” match child files
-(We expect behavior to remain correct due to parentExcluded, but we assert it explicitly.)
+     * **Only** compare the pattern to the file’s **basename** (e.g., `a.sh`), **not** to parent directory basenames.
+     * Remove/avoid any logic that treats a parent directory basename match as matching the file.
+2. **Directory entry handling (unchanged intent):**
 
+   * A non-dir pattern like `internal` should still match a **directory entry** named `internal` (so the directory itself becomes ignored). Your existing **parent-exclusion** pass should then keep its contents ignored unless explicitly re-included by further patterns.
+   * No change needed if your first pass already treats directory entries this way; otherwise, ensure that when testing a **directory entry**, a non-dir pattern is allowed to match that entry’s basename.
+
+# Tests to add (lock parity)
+
+Add these to the suite (names illustrative):
+
+1. **Non-dir negation must NOT re-include descendants**
+
+```go
 {
-  Group: "negation-non-dir-parent",
-  Description: "non-dir !build should not by itself un-ignore child files when parent stays ignored",
-  Patterns: []string{"*", "build", "!build", "!*.txt"}, // directories still ignored by "*"
-  Path: "build/file.txt",
+  Group: "negation-parent-basename",
+  Description: "Non-dir !internal must NOT re-include files under internal/",
+  Patterns: []string{"*", "!*/", "!internal"},
+  Path: "internal/config/file/a.sh",
   IsDir: false,
-  ShouldIgnore: true, // parent still excluded because "*" ignores all dirs without !*/
-},
+  ShouldIgnore: true,
+}
+```
 
+2. **Positive non-dir still ignores the directory entry**
 
-and the “un-ignore the parent then allow files” variant:
-
+```go
 {
-  Group: "negation-non-dir-parent",
-  Description: "un-ignore build dir then allow .txt",
-  Patterns: []string{"build", "!build", "!*.txt"},
-  Path: "build/file.txt",
-  IsDir: false,
-  ShouldIgnore: false,
-},
-
-
-(This pins intent regardless of whether the file-level match is via parent-basename or parent-exclusion logic.)
-
-a/** zero-segment match
-
-{
-  Group: "doublestar-zero",
-  Description: "a/** should treat zero segments as valid and ignore a/ itself via parent rules",
-  Patterns: []string{"a/**"},
-  Path: "a",
+  Group: "non-dir-direntry",
+  Description: "Pattern 'internal' ignores a directory entry named 'internal'",
+  Patterns: []string{"internal"},
+  Path: "internal",
   IsDir: true,
   ShouldIgnore: true,
-},
+}
+```
+
+3. **Correct re-inclusion requires matching the file/path**
+
+```go
 {
-  Group: "doublestar-zero",
-  Description: "negating a/**/ should re-allow the a/ directory itself",
-  Patterns: []string{"a/**", "!a/**/"},
-  Path: "a",
-  IsDir: true,
-  ShouldIgnore: false,
-},
-
-
-(If this fails, you’ll know exactly where to adjust the excluded-dirs pass.)
-
-Braces inside character classes remain literal after escape pass
-
-{
-  Group: "brace-in-class-escape",
-  Description: "braces inside [] stay literal despite global brace escaping",
-  Patterns: []string{"file[{}].md"},
-  Path: "file{.md",
-  IsDir: false,
-  ShouldIgnore: true,
-},
-{
-  Group: "brace-in-class-escape",
-  Description: "ensure '}' also literal in class",
-  Patterns: []string{"file[{}].md"},
-  Path: "file}.md",
-  IsDir: false,
-  ShouldIgnore: true,
-},
-
-
-(Yes, you already have similar ones; this pair ties directly to the escapeBraces transform.)
-
-Weird ** placements that Git traditionally treats as two *
-Git historically treats ** specially as a path globstar. Patterns like ab**cd are edge-y; some engines over-permit them. Lock your intent explicitly:
-
-{
-  Group: "odd-doublestar",
-  Description: "ab**cd should behave like ab* *cd (Git-style), not cross slashes",
-  Patterns: []string{"ab**cd"},
-  Path: "ab/x/cd",    // with slash
+  Group: "reinclude-needs-path",
+  Description: "Re-include files under internal only when pattern matches the file path",
+  Patterns: []string{"*", "!*/", "!internal/", "!internal/**"},
+  Path: "internal/config/file/a.sh",
   IsDir: false,
   ShouldIgnore: false,
-},
+}
+```
+
+4. **Control: dir-only negation alone doesn’t re-include files**
+
+```go
 {
-  Group: "odd-doublestar",
-  Description: "ab**cd matches same-segment expansions",
-  Patterns: []string{"ab**cd"},
-  Path: "abZZcd",
+  Group: "dir-negation-no-file",
+  Description: "Dir-only negation does not re-include files",
+  Patterns: []string{"*", "!*/", "!internal/"},
+  Path: "internal/config/file/a.sh",
   IsDir: false,
   ShouldIgnore: true,
-},
+}
+```
 
+# Acceptance criteria
 
-(If doublestar treats ** mid-segment as “globstar”, you’ll see it here and can decide whether to pre-normalize such patterns to Git-like behavior.)
+* Given `Patterns: [* !*/ !internal]` and path `internal/config/file/a.sh`, result is **ignored**.
+* Given `Patterns: [* !*/ !internal/ !internal/**]`, result is **not ignored**.
+* A pattern `internal` (no slash) still **ignores** a directory entry named `internal`, and the parent-exclusion rule continues to prevent re-inclusion of descendants unless a later pattern matches those descendants explicitly.
 
-Negation of bare ! / whitespace-only after ! is a no-op
-Just to freeze parser edge cases:
-
-{
-  Group: "negation-edge",
-  Description: "bare ! line is ignored",
-  Patterns: []string{"!", "*.txt"},
-  Path: "x.txt",
-  IsDir: false,
-  ShouldIgnore: true,
-},
-
-
-(Your parser currently discards empty/trimmed patterns; this makes it intentional.)
-
-Tiny code nits (optional)
-
-In escapeBraces, you blindly escape {/}. Consider skipping inside [...] character classes to avoid unnecessary backslashes (your current tests pass either way, but it reduces surprise).
-
-trimTrailingSpaces is correct as far as your tests go; keep it isolated and covered, because it’s the easiest place to regress if someone “simplifies” it later. Maybe add a short doc comment summarizing its invariant (e.g., “remove all unescaped trailing spaces; keep escaped ones, dropping the escape char”).
+Once the non-dir file matching is restricted to the **tested path’s basename**, we’ll be back in line with Git’s semantics for these cases.
