@@ -158,6 +158,8 @@ When `--file` is not set, it defaults to the first found of `.aggrignore`, `~/.c
 
 When multiple filtering rules are in play, patterns are applied in the following order (later patterns override earlier ones):
 
+TODO: Revise!
+
 1. **`.aggrignore` file** - Patterns from your ignore file (or defaults if not specified)
 2. **Extension filters** - When using `-x/--extensions`, creates include patterns for those extensions
 3. **Default excludes** - Built-in patterns for VCS/build directories (`.git/`, `vendor/`, `node_modules/`, etc.)

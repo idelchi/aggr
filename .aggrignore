@@ -1,0 +1,13 @@
+*.exe
+
+.aggrignore
+go.mod
+go.sum
+
+.vscode-server/
+node_modules/
+vendor/
+.task/
+.cache/
+.devenv/
+.build/
