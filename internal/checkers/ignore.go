@@ -8,7 +8,7 @@ import (
 
 // Ignorer is an interface for checking if a file or directory is ignored.
 type Ignorer interface {
-	IsIgnored(path string, isDir bool) bool
+	Ignored(path string, isDir bool) bool
 }
 
 // Ignore is a checker that filters files based on gitignore-style patterns.
@@ -25,7 +25,7 @@ func NewIgnore(ignore Ignorer) *Ignore {
 func (i *Ignore) Check(path string) error {
 	isDir := file.New(path).IsDir()
 
-	if ok := i.ignore.IsIgnored(path, isDir); ok {
+	if ok := i.ignore.Ignored(path, isDir); ok {
 		if isDir {
 			return fmt.Errorf("%w: dir in ignore patterns", ErrPrune)
 		}

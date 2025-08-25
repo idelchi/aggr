@@ -59,6 +59,41 @@ func (p Packer) Pack(searchPatterns []string) error {
 
 	log.Debug("- Adding ignore patterns:")
 
+	if len(p.Options.Rules.Extensions) > 0 {
+		extras := patterns.Patterns{"*", "!*/"}
+
+		extras = append(extras, ExtensionsToPatterns(p.Options.Rules.Extensions)...)
+		log.Debugf("  - file extension patterns passed on commandline: %v", extras)
+
+		ignorePatterns = append(ignorePatterns, extras...)
+	}
+
+	// Exclude hidden folders & files if hidden is false
+	if !p.Options.Rules.Hidden {
+		log.Debugf("  - hidden files and folders: %v", config.DefaultHidden)
+
+		ignorePatterns = append(ignorePatterns, config.DefaultHidden...)
+	}
+
+	log.Debugf("  - patterns passed on commandline: %v", p.Options.Rules.Patterns)
+
+	ignorePatterns = append(ignorePatterns, p.Options.Rules.Patterns...)
+
+	// Exclude the executable itself
+	if exe, err := os.Executable(); err == nil {
+		path := file.New(exe).Path()
+		log.Debugf("  - the executable: %q", path)
+
+		ignorePatterns = append(ignorePatterns, path)
+	}
+
+	// Add output file to excludes if specified
+	if !p.Options.IsStdout() {
+		log.Debugf("  - the output file: %q", p.Options.Output)
+
+		ignorePatterns = append(ignorePatterns, p.Options.Output)
+	}
+
 	var aggrignore file.File
 
 	if !p.Options.Rules.IgnoreFile.Set || p.Options.Rules.IgnoreFile.Path != "" {
@@ -81,49 +116,14 @@ func (p Packer) Pack(searchPatterns []string) error {
 
 		ignorePatterns = append(ignorePatterns, patterns.Patterns(lines).TrimEmpty()...)
 
-		log.Debugf("  - .aggrignore (from %q): %v", aggrignore, gitignore.New(ignorePatterns).Patterns())
+		log.Debugf("  - .aggrignore (from %q): %v", aggrignore, gitignore.New(ignorePatterns...).Patterns())
 	} else {
 		log.Debug("  - .aggrignore: [none loaded]")
-	}
-
-	if len(p.Options.Rules.Extensions) > 0 {
-		extras := patterns.Patterns{"*", "!*/"}
-
-		extras = append(extras, ExtensionsToPatterns(p.Options.Rules.Extensions)...)
-		log.Debugf("  - file extension patterns passed on commandline: %v", extras)
-
-		ignorePatterns = append(ignorePatterns, extras...)
 	}
 
 	log.Debugf("  - default: %v", config.DefaultExcludes)
 
 	ignorePatterns = append(ignorePatterns, config.DefaultExcludes...)
-
-	// Exclude the executable itself
-	if exe, err := os.Executable(); err == nil {
-		path := file.New(exe).Path()
-		log.Debugf("  - the executable: %q", path)
-
-		ignorePatterns = append(ignorePatterns, path)
-	}
-
-	// Add output file to excludes if specified
-	if !p.Options.IsStdout() {
-		log.Debugf("  - the output file: %q", p.Options.Output)
-
-		ignorePatterns = append(ignorePatterns, p.Options.Output)
-	}
-
-	log.Debugf("  - patterns passed on commandline: %v", p.Options.Rules.Patterns)
-
-	ignorePatterns = append(ignorePatterns, p.Options.Rules.Patterns...)
-
-	// Exclude hidden folders & files if hidden is false
-	if !p.Options.Rules.Hidden {
-		log.Debugf("  - hidden files and folders: %v", config.DefaultHidden)
-
-		ignorePatterns = append(ignorePatterns, config.DefaultHidden...)
-	}
 
 	ignorer := ignorePatterns.AsGitIgnore()
 

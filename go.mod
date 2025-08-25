@@ -7,6 +7,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/charmbracelet/fang v0.3.0
 	github.com/dustin/go-humanize v1.0.1
+	github.com/idelchi/go-gitignore v0.0.1
 	github.com/idelchi/godyl v0.0.21-beta.0.20250822080932-2d98d91e5f70
 	github.com/spf13/cobra v1.9.1
 	github.com/xlab/treeprint v1.2.0
@@ -22,9 +23,8 @@ require (
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
-	github.com/goccy/go-yaml v1.17.1 // indirect
+	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
-	github.com/idelchi/go-gitignore v0.0.0-20250822102744-bdd78b81a6cf // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect

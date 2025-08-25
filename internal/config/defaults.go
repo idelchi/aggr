@@ -24,21 +24,7 @@ const (
 //
 //nolint:gochecknoglobals 	// Fair use of global variables.
 var DefaultExcludes = patterns.Patterns{
-	// Exclude all kinds of executables
-	"*.exe",
-
-	// Exclude some commonly ignore files
-	".aggrignore",
-	"go.mod",
-	"go.sum",
-
-	// Exclude some known directories
 	".git/",
-	".vscode-server/",
-	"node_modules/",
-	"vendor/",
-	".task/",
-	".cache/",
 }
 
 // DefaultHidden is the default patterns for hidden files and directories.
