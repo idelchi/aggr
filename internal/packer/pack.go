@@ -81,7 +81,7 @@ func (p Packer) Pack(searchPatterns []string) error {
 
 		ignorePatterns = append(ignorePatterns, patterns.Patterns(lines).TrimEmpty()...)
 
-		log.Debugf("  - .aggrignore (from %q): %v", aggrignore, gitignore.New(ignorePatterns).Patterns())
+		log.Debugf("  - .aggrignore (from %q): %v", aggrignore, gitignore.New(ignorePatterns...).Patterns())
 	} else {
 		log.Debug("  - .aggrignore: [none loaded]")
 	}

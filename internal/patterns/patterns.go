@@ -16,7 +16,7 @@ type Patterns []string
 
 // AsGitIgnore compiles the patterns into a GitIgnore matcher for efficient pattern matching.
 func (p Patterns) AsGitIgnore() *gitignore.GitIgnore {
-	return gitignore.New(p)
+	return gitignore.New(p...)
 }
 
 // TrimEmpty removes empty and whitespace-only patterns from the collection.
