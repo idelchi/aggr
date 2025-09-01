@@ -157,6 +157,12 @@ func (p Packer) Pack(searchPatterns []string) error {
 
 	files := walker.Files
 
+	if len(files) == 0 {
+		log.Warn("No files found matching the specified patterns and rules")
+
+		return nil
+	}
+
 	slices.SortFunc(files, func(a, b file.File) int {
 		return strings.Compare(strings.ToLower(a.Path()), strings.ToLower(b.Path()))
 	})

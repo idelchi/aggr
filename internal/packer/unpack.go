@@ -72,17 +72,17 @@ func (p Packer) Unpack(packs []string) error {
 		return fmt.Errorf("unpacking files: %w", err)
 	}
 
+	if len(files) == 0 {
+		log.Warn("No files found matching the specified patterns and rules")
+
+		return nil
+	}
+
 	if p.Options.DryRun {
-		if len(files) == 0 {
-			log.Warn("  - No files would be unpacked in dry run mode")
-
-			return nil
-		}
-
-		log.Info("- Unpacking files:")
+		log.Info("Unpacking files:")
 
 		for _, f := range files {
-			log.Debugf("  - %q", f)
+			log.Debugf("- %q", f)
 		}
 
 		return nil
