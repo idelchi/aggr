@@ -22,8 +22,8 @@ func NewIgnore(ignore Ignorer) *Ignore {
 }
 
 // Check returns an error if the file matches any of the configured ignore patterns.
-func (i *Ignore) Check(path string) error {
-	isDir := file.New(path).IsDir()
+func (i *Ignore) Check(base, path string) error {
+	isDir := file.New(base, path).IsDir()
 
 	if ok := i.ignore.Ignored(path, isDir); ok {
 		if isDir {

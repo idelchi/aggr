@@ -288,7 +288,7 @@ func (a *Aggregator) parseStream(ctx context.Context, reader file.File, chunks c
 func (a *Aggregator) writeChunk(chunk fileChunk, dst string, checkers checkers.Checkers, sink *filesSink) error {
 	data := canonical(a.unescape(chunk.data))
 
-	if err := checkers.Check(chunk.path); err != nil {
+	if err := checkers.Check("", chunk.path); err != nil {
 		a.Logger.Debugf("  - %s: %v", chunk.path, err)
 
 		return nil

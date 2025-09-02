@@ -19,7 +19,7 @@ func NewSeen(files *files.Files) *Seen {
 }
 
 // Check returns an error if the file has already been included in the collection.
-func (s *Seen) Check(path string) error {
+func (s *Seen) Check(_, path string) error {
 	if s.Files.Contains(file.New(path)) {
 		return fmt.Errorf("%w: already included", ErrSkip)
 	}

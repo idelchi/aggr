@@ -20,14 +20,11 @@ func NewSize(size int) *Size {
 }
 
 // Check returns an error if the file is larger than the configured size limit.
-func (s *Size) Check(path string) error {
-	if !file.New(path).IsFile() {
-		return nil // Directories are not considered
-	}
+func (s *Size) Check(base, path string) error {
+	file := file.New(base, path)
 
-	file := file.New(path)
 	if !file.IsFile() {
-		return nil
+		return nil // Directories are not considered
 	}
 
 	if ok, err := file.LargerThan(int64(s.Size)); err == nil && ok {

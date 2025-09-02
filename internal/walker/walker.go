@@ -55,6 +55,8 @@ type Walker struct {
 //
 // TODO(Idelchi): Write tests where fsys is mocked by fstest.MapFS{}.
 func (w *Walker) Walk(fsys fs.FS, pattern string, opts ...doublestar.GlobOption) error {
+	base := fmt.Sprintf("%s", fsys)
+
 	err := doublestar.GlobWalk(
 		fsys, pattern,
 		func(p string, dir fs.DirEntry) error {
@@ -64,10 +66,8 @@ func (w *Walker) Walk(fsys fs.FS, pattern string, opts ...doublestar.GlobOption)
 
 			fullPath := file.New(p)
 
-			if err := w.Checkers.Check(fullPath.Path()); err != nil {
-				// if !strings.Contains(fullPath.Path(), ".git") {
+			if err := w.Checkers.Check(base, fullPath.Path()); err != nil {
 				w.Logger.Debugf("  - %q: %v", fullPath, err)
-				// }
 
 				switch {
 				case errors.Is(err, checkers.ErrAbort):
