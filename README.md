@@ -1,6 +1,6 @@
 # aggr
 
-A tool to aggregate and unpack files from directories</p>
+A tool to aggregate and unpack files from directories
 
 ---
 
@@ -41,7 +41,7 @@ aggr src/ docs/
 
 ```sh
 # Pack using glob patterns
-aggr '**/folder/**/*.go'
+aggr "**/folder/**/*.go"
 ```
 
 ```sh
