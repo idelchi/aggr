@@ -36,7 +36,7 @@ aggr
 
 ```sh
 # Pack specific paths
-aggr src/ docs/
+aggr src docs
 ```
 
 ```sh
@@ -86,6 +86,7 @@ This keeps the archive parseable without mutating normal content.
 - **Normalization**:
   - `.` becomes `**` (current dir + all subdirs).
   - A directory path with no glob meta (e.g. `foo/`) is treated as recursive: `foo/**`.
+    Same goes for a plain path (e.g. `foo`) that is detected as a directory.
   - If your pattern already has meta (`*?[{`), it's passed through.
 - **Glob engine**: Uses [doublestar](https://github.com/bmatcuk/doublestar). Examples:
   - `**/*.go`
@@ -109,13 +110,13 @@ You can also provide additional ignore patterns via CLI:
 aggr -i "*.tmp" -i "node_modules/"
 ```
 
-**Defaults** (always applied unless you override with your own patterns):
+**Default exclusions** (always applied unless you override with your own patterns):
 
-- Common VCS/build dirs: `.git/`, `vendor/`, `node_modules/`, etc.
-- Hidden files/dirs (those starting with `.`) are excluded **by default**. Use `-a/--hidden` to include them.
-- The output file itself (when `-o` is used).
-- The `aggr` executable.
-- **Binary files** are skipped automatically.
+- `.git/`
+- Hidden files/dirs (those starting with `.`). Use `-a/--hidden` to include them
+- The output file itself (when `-o` is used)
+- The `aggr` executable
+- **Binary files**
 
 ### Extensions include list
 
