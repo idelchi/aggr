@@ -5,6 +5,7 @@ vars:
   DEVENV: .devenv
 
 env:
+  DEVENV: .devenv
   CONFIG_DIR: "{{.DEVENV}}/settings"
   SCRIPTS_DIR: "{{.DEVENV}}/scripts"
   BUILD_DIR: "{{ .ROOT_DIR | toSlash }}/.build"

@@ -1,6 +1,10 @@
 #!/bin/sh
 set -e
 
+# Tool specific variables
+TOOL="aggr"
+DISABLE_SSL="${AGGR_DISABLE_SSL:-false}"
+
 need_cmd() {
   if ! command -v "${1}" >/dev/null 2>&1; then
     printf "Required command '%s' not found\n" "$1"
@@ -11,10 +15,6 @@ need_cmd() {
 main() {
   # Check for required commands
   need_cmd curl
-
-  # Tool specific variables
-  TOOL="aggr"
-  DISABLE_SSL="${AGGR_DISABLE_SSL:-false}"
 
   # Call the installation script with the provided arguments
   # shellcheck disable=SC2312

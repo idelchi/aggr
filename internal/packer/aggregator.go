@@ -1,7 +1,3 @@
-// Package packer packs a set of small files into a single text stream and
-// unpacks that stream back to files. Each unpacked file ends with exactly
-// one trailing newline. Packing and unpacking use a worker pool whose size
-// is controlled by Aggregator.Parallel.
 package packer
 
 import (
