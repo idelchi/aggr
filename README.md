@@ -1,6 +1,6 @@
 # aggr
 
-A tool to aggregate and unpack files from directories
+A tool to filter and aggregate files into a single text file.
 
 ---
 
@@ -13,13 +13,10 @@ A tool to aggregate and unpack files from directories
 `aggr` is a command-line utility that recursively aggregates files from specified paths into a single file and
 unpacks them back to their original directory structure.
 
-## Features
-
-- Pack multiple files and directories into a single text archive.
-- Unpack archives, restoring the original directory structure.
 - Filter files by size, extension, and path using glob + `.gitignore`-style patterns.
 - Supports loading of a `.aggrignore` following `gitignore` conventions.
 - Skips binary files automatically and, by default, hidden files and common VCS/build dirs.
+- Unpack archives, restoring the original directory structure.
 
 ## Installation
 
@@ -35,18 +32,13 @@ aggr
 ```
 
 ```sh
-# Pack specific paths
+# Pack specific folders
 aggr src docs
 ```
 
 ```sh
 # Pack using glob patterns
 aggr "**/folder/**/*.go"
-```
-
-```sh
-# Unpack an archive to a specific directory
-aggr --unpack -o __extracted__ pack.aggr
 ```
 
 ## Format
@@ -72,13 +64,7 @@ Description here.
 // === AGGR: END: README.md ===
 ```
 
-### Marker escaping
-
-If a _line_ in your file content starts with the marker prefix (after optional spaces/tabs),
-it gets escaped on pack and unescaped on unpack. Lines that contain the marker elsewhere are left alone.
-This keeps the archive parseable without mutating normal content.
-
-## Path semantics (important)
+## Path semantics
 
 - **Root directory**: By default the root is the current working directory. Use `--root DIR` or `-C DIR` to change it.
 - **Patterns**: Input patterns must be **relative** to the root and **cannot** contain absolute paths or any `..` segment.
@@ -141,7 +127,7 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 - `--binary`, `-b` – Include binary files
 - `--size`, `-s` – Maximum size of file to include
 - `--max`, `-m` – Maximum number of files to include
-- `--dry-run`, `-d` – Show which files would be processed without reading contents
+- `--dry`, `-d` – Show which files would be processed without reading contents
 - `--parallel`, `-j` – Number of parallel workers to use
 
 When `--file` is not set, it defaults to the first found of `.aggrignore`, `~/.config/aggr/.aggrignore` and `.gitignore`.
@@ -156,3 +142,25 @@ When `--file` is not set, it defaults to the first found of `.aggrignore`, `~/.c
   If you want exact matching behaviour, use explicit globs.
 - **Binary detection is conservative:** Files that look binary are skipped.
   If you need to force-include something unusual, use `--binary/-b` to disable the check.
+- **Marker escaping:** If a line in your file content starts with the marker prefix (after optional spaces/tabs),
+  it gets escaped on pack and unescaped on unpack. Lines that contain the marker elsewhere are left alone.
+  This keeps the archive parseable without mutating normal content.
+
+When multiple filtering rules are in play, patterns are applied in the following order
+(later patterns can add to or negate earlier ones):
+
+1. **Extension filters** - When using `-x/--extensions`, creates include patterns for those extensions
+2. **Hidden files** - `.` prefixed files/folders are excluded (unless `-a/--hidden` is used)
+3. **CLI ignore patterns** - Patterns specified with `-i/--ignore` flags
+4. **Executable exclusion** - The `aggr` binary itself is automatically excluded
+5. **Output file exclusion** - When using `-o`, the output file is excluded to prevent recursion
+6. **`.aggrignore` file** - Patterns from the loaded ignore file
+7. **Default excludes** - Built-in patterns for VCS directories (`.git/`, etc.)
+
+This means that:
+
+- `.aggrignore` and default excludes are applied last, allowing them to override earlier patterns
+- CLI patterns (`-i`) are applied early, so `.aggrignore` patterns can override them
+- Use negation patterns (e.g., `!.config/`) in `.aggrignore` to include specific hidden files/directories
+
+You can see the order by passing `--dry-run`.

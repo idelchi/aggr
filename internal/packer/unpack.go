@@ -17,7 +17,7 @@ import (
 func (p Packer) Unpack(packs []string) error {
 	path := packs[0] // Expecting a single file path for unpacking
 
-	log, err := Logger(p.Options.DryRun)
+	log, err := Logger(p.Options.Dry)
 	if err != nil {
 		return err
 	}
@@ -26,7 +26,7 @@ func (p Packer) Unpack(packs []string) error {
 	archive := file.New(path)
 
 	// Create unpacker instance
-	unpacker := NewAggregator(log, p.Options.DryRun, p.Options.Parallel, p.Options.Rules.Root)
+	unpacker := NewAggregator(log, p.Options.Dry, p.Options.Parallel, p.Options.Rules.Root)
 
 	ignorePatterns := patterns.Patterns(p.Options.Rules.Patterns)
 
@@ -78,7 +78,7 @@ func (p Packer) Unpack(packs []string) error {
 		return nil
 	}
 
-	if p.Options.DryRun {
+	if p.Options.Dry {
 		log.Info("Unpacking files:")
 
 		for _, f := range files {

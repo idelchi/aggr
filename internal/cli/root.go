@@ -106,7 +106,7 @@ func Execute(version string) error {
 
 	// Behavior
 	root.Flags().
-		BoolVarP(&configuration.DryRun, "dry-run", "d", false, "Show which files would be processed without reading contents")
+		BoolVarP(&configuration.Dry, "dry", "d", false, "Show which files would be processed without reading contents")
 	root.Flags().IntVarP(&configuration.Parallel, "parallel", "j", 1, "Number of parallel workers to use")
 
 	options := []fang.Option{

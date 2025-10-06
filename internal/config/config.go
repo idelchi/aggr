@@ -4,8 +4,8 @@ package config
 type Options struct {
 	// Output specifies the output file path for aggregated data.
 	Output string
-	// DryRun indicates whether to perform a dry run without writing output.
-	DryRun bool
+	// Dry indicates whether to perform a dry run without writing output.
+	Dry bool
 	// Parallel defines the number of parallel workers to use during processing.
 	Parallel int
 	// Rules contains the file filtering and processing rules.

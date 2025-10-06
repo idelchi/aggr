@@ -23,14 +23,14 @@ import (
 //
 //nolint:gocognit,funlen	// TODO(Idelchi): Refactor this function to reduce complexity.
 func (p Packer) Pack(searchPatterns []string) error {
-	log, err := Logger(p.Options.DryRun)
+	log, err := Logger(p.Options.Dry)
 	if err != nil {
 		return err
 	}
 
 	log.Debug("Packing files with options:")
 
-	if p.Options.DryRun {
+	if p.Options.Dry {
 		pretty.PrintYAML(p.Options)
 
 		//nolint:forbidigo	// Function prints out to the console.
@@ -167,13 +167,13 @@ func (p Packer) Pack(searchPatterns []string) error {
 		return strings.Compare(strings.ToLower(a.Path()), strings.ToLower(b.Path()))
 	})
 
-	if p.Options.DryRun {
+	if p.Options.Dry {
 		p.Options.Output = "" // In dry run mode, we don't write anything
 	}
 
 	aggregator := NewAggregator(
 		log,
-		p.Options.DryRun,
+		p.Options.Dry,
 		p.Options.Parallel,
 		p.Options.Rules.Root,
 	)
