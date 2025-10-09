@@ -12,6 +12,7 @@ env:
 
   CSPELL_CONFIG: ./settings/cspell.yaml
   CODESPELL_WORDLIST: ./settings/project-words
+  TYPOS_CONFIG: ./settings/typos.toml
 
 includes:
   aux: "{{.DEVENV}}/taskfiles/Taskfile.aux.yml"

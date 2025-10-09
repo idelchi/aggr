@@ -21,7 +21,7 @@ func Execute(version string) error {
 	var configuration config.Options
 
 	root := &cobra.Command{
-		Use:   config.Name,
+		Use:   fmt.Sprintf("%s [patterns ...]", config.Name), //nolint:perfsprint  // More readable this way.
 		Short: "Aggregate and unpack files",
 		Long: heredoc.Doc(`
 			aggr is a command-line utility that recursively aggregates files
@@ -41,6 +41,9 @@ func Execute(version string) error {
 
 			# Unpack the contents of the archive
 			aggr -u -o __extracted__ pack.aggr
+
+			# Pack all .txt and .md files in the folder 'docs'
+			aggr -x txt,md docs
 		`),
 		Version:       version,
 		SilenceErrors: true,

@@ -24,6 +24,7 @@ idelchi
 infof
 ireturn
 nolint
+perfsprint
 treeprint
 wrapcheck
 xlab
