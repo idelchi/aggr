@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"runtime"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/charmbracelet/fang"
@@ -14,6 +15,8 @@ import (
 )
 
 // Execute runs the root command for the aggr CLI application.
+//
+//nolint:funlen // This function is long due to command and flag definitions.
 func Execute(version string) error {
 	var configuration config.Options
 
@@ -63,6 +66,10 @@ func Execute(version string) error {
 			}
 
 			if configuration.Unpack {
+				if !cmd.Flags().Lookup("output").Changed {
+					packer.Options.Output = ""
+				}
+
 				return packer.Unpack(args)
 			}
 
@@ -107,7 +114,10 @@ func Execute(version string) error {
 	// Behavior
 	root.Flags().
 		BoolVarP(&configuration.Dry, "dry", "d", false, "Show which files would be processed without reading contents")
-	root.Flags().IntVarP(&configuration.Parallel, "parallel", "j", 1, "Number of parallel workers to use")
+
+	defaultWorkers := 4 * runtime.NumCPU() //nolint:mnd	// 4xCPUs
+	root.Flags().
+		IntVarP(&configuration.Parallel, "parallel", "j", defaultWorkers, "Number of parallel workers to use")
 
 	options := []fang.Option{
 		fang.WithVersion(version),
