@@ -163,4 +163,4 @@ This means that:
 - CLI patterns (`-i`) are applied early, so `.aggrignore` patterns can override them
 - Use negation patterns (e.g., `!.config/`) in `.aggrignore` to include specific hidden files/directories
 
-You can see the order by passing `--dry-run`.
+You can see the order by passing `--dry`.
