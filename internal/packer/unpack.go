@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/idelchi/aggr/internal/checkers"
-	"github.com/idelchi/aggr/internal/config"
 	"github.com/idelchi/aggr/internal/patterns"
 	"github.com/idelchi/godyl/pkg/path/file"
 	"github.com/idelchi/godyl/pkg/path/folder"
@@ -58,7 +57,7 @@ func (p Packer) Unpack(packs []string) error {
 			return fmt.Errorf("calculating archive hash: %w", err)
 		}
 
-		output = folder.New(fmt.Sprintf("%s-%s", config.Name, hash))
+		output = folder.New(fmt.Sprintf("%s-%s", archive.Base(), hash))
 	}
 
 	// if output exists as a directory, prompt the user

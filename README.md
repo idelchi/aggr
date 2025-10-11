@@ -28,7 +28,7 @@ curl -sSL https://raw.githubusercontent.com/idelchi/aggr/refs/heads/main/install
 
 ```sh
 # Pack the current directory (excluding ignored files) into `pack.aggr`
-aggr
+aggr -o pack.aggr
 ```
 
 ```sh
@@ -118,9 +118,10 @@ This is implemented as an "allow-list" layer using ignore patterns under the hoo
 ### Flags
 
 - `--unpack`, `-u` – Unpack from a packed file
-- `--output`, `-o` – Specify output file/folder. For --unpack, defaults to `$(pwd)/aggr-[hash of <file>]`
+- `--output`, `-o` – Specify output file/folder.
+  For packing, defaults to `<folder>.aggr`, for unpacking to `<file>-[hash of <file>]`
 - `--root`, `-C` – Root directory to use
-- `--file`, `-f` - Path to the `.aggrignore` file. Set to an empty string to completely ignore. When not passed, uses defaults.
+- `--file`, `-f` - Path to the `.aggrignore` file. Set to an empty string to completely ignore. When not passed, uses defaults
 - `--extensions`, `-x` – File extensions to include (repeatable)
 - `--ignore`, `-i` – Additional .aggrignore patterns (repeatable)
 - `--hidden`, `-a` – Include hidden files and directories

@@ -3,6 +3,7 @@ package packer
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -23,6 +24,16 @@ import (
 //
 //nolint:gocognit,funlen	// TODO(Idelchi): Refactor this function to reduce complexity.
 func (p Packer) Pack(searchPatterns []string) error {
+	if p.Options.Output == "" {
+		path, err := filepath.Abs(p.Options.Rules.Root)
+		if err != nil {
+			return err
+		}
+
+		//nolint:perfsprint  // More readable this way.
+		p.Options.Output = fmt.Sprintf("%s.aggr", filepath.Base(path))
+	}
+
 	log, err := Logger(p.Options.Dry)
 	if err != nil {
 		return err
